@@ -1,0 +1,109 @@
+---
+title: "tools/call"
+description: "Invoke a Computer Use tool by name with its JSON arguments."
+---
+
+## Request
+
+```bash
+curl -s -X POST "http://localhost:8081/mcp" \
+  -H "Authorization: Bearer $MCP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: $SESSION_ID" \
+  -H "X-Chat-Id: my-session" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {
+      "name": "bash_tool",
+      "arguments": {"command": "echo Hello from sandbox", "description": "greet"}
+    }
+  }'
+```
+
+## Response shape
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {"type": "text", "text": "Hello from sandbox\n"}
+    ],
+    "isError": false
+  }
+}
+```
+
+`content` is an array of MCP content blocks. Today the server returns only `text` blocks. Image returns are planned but blocked on Open WebUI's client-side MCP renderer (see [known bug #5](/reference/known-bugs#5-mcp-tools-cannot-return-images-to-the-model-open-webui-limitation)).
+
+## Streaming
+
+Tool calls stream progress as SSE events on the same response. Clients that want partial output must set `Accept: application/json, text/event-stream` and parse `data:` lines. The `mcp` Python SDK and Open WebUI both do this automatically.
+
+Heartbeats are emitted every 15 seconds for long-running commands so proxies don't close the connection.
+
+## Common examples
+
+### Create a document with the docx skill
+
+```json
+{
+  "jsonrpc": "2.0", "id": 4, "method": "tools/call",
+  "params": {
+    "name": "bash_tool",
+    "arguments": {
+      "command": "python3 /mnt/skills/public/docx/scripts/create_report.py --out /mnt/user-data/outputs/report.docx",
+      "description": "generate report"
+    }
+  }
+}
+```
+
+### Read a file with line numbers
+
+```json
+{
+  "jsonrpc": "2.0", "id": 5, "method": "tools/call",
+  "params": {
+    "name": "view",
+    "arguments": {"path": "/home/assistant/README.md", "view_range": [1, 40]}
+  }
+}
+```
+
+### Delegate to Claude Code
+
+```json
+{
+  "jsonrpc": "2.0", "id": 6, "method": "tools/call",
+  "params": {
+    "name": "sub_agent",
+    "arguments": {
+      "prompt": "Clone https://github.com/org/repo, run the tests, and fix any failures. Return a summary.",
+      "model": "sonnet"
+    }
+  }
+}
+```
+
+To pass MCP servers into Claude Code, set `X-MCP-Servers: github,jira` on the HTTP request — see [Sub-agents](/features/sub-agents).
+
+## Errors
+
+| `isError: true` cause | What it means |
+|---|---|
+| Command non-zero exit | The command failed; stderr is in `content[0].text` |
+| Timeout | Exceeded `COMMAND_TIMEOUT` (or per-call `timeout`) |
+| Path outside sandbox | `view` / `create_file` rejected a path outside the allowed roots |
+| `old_str` not unique | `str_replace` found zero or multiple matches |
+
+Transport-level errors (`401`, `400`, `500`) come back as HTTP error responses, not JSON-RPC errors.
+
+## Related
+
+- [tools/list](/api-reference/mcp/tools-list) — tool signatures
+- [resources/list](/api-reference/mcp/resources) — browse uploaded files

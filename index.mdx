@@ -1,97 +1,74 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Yambr Open Computer Use"
+description: "Give any LLM its own computer — live browser, terminal, code execution, and 13+ document skills, self-hosted or fully managed on Yambr."
 ---
 
-## Setting up
+<img
+  src="/images/openwebui-hero.png"
+  alt="Open Computer Use running inside chat.yambr.com — the model drafting a .docx cover letter with live file preview"
+  className="rounded-2xl"
+/>
 
-Get your documentation site up and running in minutes.
+## What is Open Computer Use?
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+An MCP server that gives any LLM a fully-equipped Ubuntu sandbox in its own Docker container. Think of it as your AI's computer — it can do everything a developer can do:
 
-## Make it yours
+- **Execute code** — bash, Python, Node.js, Java, Bun
+- **Create documents** — Word, Excel, PowerPoint, PDF with professional styling via skills
+- **Browse the web** — Playwright + live CDP browser streaming (you see what the AI sees, in real time)
+- **Run Claude Code** — autonomous sub-agent with an interactive terminal; MCP servers auto-configured
+- **Use 13+ skills** — battle-tested workflows for document creation, web testing, design, and more
 
-Design a docs site that looks great and empowers your users.
+Each chat session runs in its own isolated Docker container. Works with **any MCP-compatible client**: Open WebUI, Claude Desktop, LiteLLM, n8n, or your own integration.
 
-<Columns cols={2}>
+## Two ways to use it
+
+<CardGroup cols={2}>
   <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
+    title="Managed on Yambr"
+    icon="cloud"
+    href="/quickstart"
   >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+    Get an API key at [app.yambr.com](https://app.yambr.com/), point any OpenAI-compatible client at [api.yambr.com](https://api.yambr.com), or just open [chat.yambr.com](https://chat.yambr.com/) and start chatting. No servers to run.
   </Card>
   <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
+    title="Self-hosted"
+    icon="server"
+    href="/install/quickstart"
   >
-    Auto-generate API documentation from OpenAPI specifications.
+    Clone [the repo](https://github.com/Yambr/open-computer-use), `docker compose up`. BSL 1.1 / Apache 2.0 / MIT. Tested in production with 1,000+ MAU.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Try it in 60 seconds
 
-Everything you need to create world-class documentation.
+<Steps>
+  <Step title="Open chat.yambr.com">
+    Sign in to [chat.yambr.com](https://chat.yambr.com/) — a hosted Open WebUI with Computer Use already wired up.
+  </Step>
+  <Step title="Ask for something real">
+    > *"Create a professional cover letter in .docx for a Senior Software Engineer applying to a startup."*
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+    The model picks the right skill, writes the file inside its sandbox, and a preview appears inline. Download, share, iterate.
+  </Step>
+  <Step title="Grab an API key (optional)">
+    Want to drive it from code? Get a key at [app.yambr.com](https://app.yambr.com/) and point your OpenAI SDK at `https://api.yambr.com`. See [Yambr LiteLLM gateway](/platform/litellm).
+  </Step>
+</Steps>
+
+## Learn more
+
+<CardGroup cols={2}>
+  <Card title="Yambr Platform" icon="building" href="/platform/overview">
+    The four services — `api`, `app`, `chat`, `cu` — and how they fit together.
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="Architecture" icon="diagram-project" href="/architecture">
+    What's inside the sandbox, how chats get isolated, how MCP is wired.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Skills reference" icon="wand-magic-sparkles" href="/skills/reference">
+    13 built-in skills (docx, xlsx, pptx, pdf, playwright, sub-agent, ...) plus 14 examples.
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
+  <Card title="Integrations" icon="plug" href="/integrations/open-webui">
+    Open WebUI, Claude Desktop, LiteLLM, n8n, or any MCP-over-HTTP client.
   </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+</CardGroup>

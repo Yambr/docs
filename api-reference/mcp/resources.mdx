@@ -1,0 +1,89 @@
+---
+title: "resources/list & resources/read"
+description: "Browse and read uploaded files as first-class MCP resources."
+---
+
+Uploaded files are surfaced as MCP resources so clients that speak `resources/*` (Claude Desktop, Agents SDK, MCP Inspector) can list and read them without going through `bash_tool`.
+
+## URI shape
+
+```
+file://uploads/{chat_id}/{url-encoded rel_path}
+```
+
+`chat_id` is embedded in the URI because Agents SDK and Inspector don't re-send `X-Chat-Id` on per-resource calls — URIs must be self-contained.
+
+URL-encoding: FastMCP's `ResourceTemplate.matches` uses `[^/]+` per template param (blocks nested paths). Encoding the path flattens it without forking the SDK.
+
+## `resources/list`
+
+```bash
+curl -s -X POST "http://localhost:8081/mcp" \
+  -H "Authorization: Bearer $MCP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: $SESSION_ID" \
+  -H "X-Chat-Id: my-session" \
+  -d '{"jsonrpc": "2.0", "id": 7, "method": "resources/list"}'
+```
+
+Response:
+
+```json
+{
+  "jsonrpc": "2.0", "id": 7,
+  "result": {
+    "resources": [
+      {
+        "uri": "file://uploads/my-session/report.docx",
+        "name": "report.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      }
+    ]
+  }
+}
+```
+
+## `resources/read`
+
+```bash
+curl -s -X POST "http://localhost:8081/mcp" \
+  -H "Authorization: Bearer $MCP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: $SESSION_ID" \
+  -H "X-Chat-Id: my-session" \
+  -d '{
+    "jsonrpc": "2.0", "id": 8, "method": "resources/read",
+    "params": {"uri": "file://uploads/my-session/notes.txt"}
+  }'
+```
+
+- Text MIME types (`text/*` + a short allowlist) → `contents[0].text`.
+- Everything else → `contents[0].blob` (base64).
+
+## Dynamic registration
+
+`sync_chat_resources(chat_id)` clears previously-registered entries for that chat and re-adds from the current filesystem state, under an `asyncio.Lock` to avoid "dict changed size during iteration" when a concurrent `resources/list` runs during an upload.
+
+Called from:
+
+- `docker_manager._create_container` — initial sync when the container spins up.
+- `app.py:upload_file` — after `POST /api/uploads/{chat_id}/{filename}` saves a new file.
+
+## Uploads
+
+Upload stays on HTTP — MCP has no upload primitive:
+
+```bash
+curl -X POST "http://localhost:8081/api/uploads/my-session/notes.txt" \
+  -H "Authorization: Bearer $MCP_API_KEY" \
+  --data-binary @notes.txt
+```
+
+After the POST returns, the resource is immediately visible to `resources/list`.
+
+## Related
+
+- [System prompt — Tier 5](/reference/system-prompt#tier-5--uploaded-files-as-mcp-resources)
+- [File preview](/features/file-preview)

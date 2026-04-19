@@ -1,0 +1,80 @@
+---
+title: "Known bugs"
+description: "Caveats that will bite you. Upstream fixes in progress — track them on GitHub."
+---
+
+## 1. MCP server: `TypeError 'NoneType'` on SSE notifications
+
+**Severity:** Low (doesn't break functionality — tool calls return 200 OK)
+
+**Error**
+
+```
+starlette/routing.py, line 74, in app
+    await response(scope, receive, send)
+TypeError: 'NoneType' object is not callable
+```
+
+**When:** Every `POST /mcp` that returns 202 Accepted (SSE notification acknowledgment).
+
+**Root cause:** MCP Python SDK's Streamable HTTP handler returns `None` for fire-and-forget notification responses. Starlette expects an ASGI-callable Response.
+
+**Impact:** Error is logged but tool calls work. The 202 is already sent before the error.
+
+**Likely fix:** Check if the `mcp` SDK version has a fix, or patch the route handler to return an empty Response for 202.
+
+## 2. File preview auto-show depends on model behavior
+
+**Severity:** Medium
+
+**How it's meant to work:** The `fix_preview_url_detection` patch detects Computer Use Server file URLs in assistant messages and auto-opens an iframe preview in the artifacts panel. The `computer_link_filter` injects the file-server URL into the system prompt so the model knows to include file links.
+
+**Issue:** Some models (especially smaller ones) don't consistently include file URLs in responses even when instructed. When the model just says "file created" without the URL, the preview patch has nothing to detect.
+
+**Workaround:** The filter's `outlet()` always adds a "View your file" link and "Download all as archive" button — these work regardless. For auto-preview, use models that follow system prompt instructions reliably (Claude, GPT-4o, larger Qwen).
+
+## 3. PPTX generation may timeout on complex prompts
+
+**Severity:** Low (model-dependent)
+
+**When:** Model makes many sequential tool calls (19+ bash, create_file, view, str_replace) for complex tasks.
+
+**Impact:** Response can appear incomplete if the model hits max tool-call retries.
+
+**Workaround:** Simpler prompts; or raise `COMMAND_TIMEOUT` + `CHAT_RESPONSE_MAX_TOOL_CALL_RETRIES` on the `open-webui` container.
+
+## 4. File/preview endpoints have no per-user auth
+
+**Severity:** Medium (known limitation, planned fix)
+
+**Issue:** `/files/{chat_id}/`, `/api/outputs/{chat_id}`, `/browser/{chat_id}/`, `/terminal/{chat_id}/` are reachable by anyone who knows the chat ID UUID. Only `MCP_API_KEY` protects the MCP endpoint itself.
+
+**Impact:** In a multi-user deployment without network isolation, one user could access another's files if they know the chat ID.
+
+**Current mitigation:** Chat IDs are UUIDs (hard to guess). Tested in production with 1000+ users on Open WebUI — acceptable for self-hosted deployments behind a firewall or VPN.
+
+**Planned fix:** Per-session signed tokens for all file/preview/terminal endpoints.
+
+## 5. MCP tools cannot return images to the model (Open WebUI limitation)
+
+**Severity:** Medium
+
+**Issue:** Open WebUI doesn't support `image` content in MCP tool results — only `text` is handled. Tools cannot return screenshots or generated charts back to the model for analysis.
+
+**Impact:** Playwright screenshots and bash-generated images don't reach the model. The model can't reason about what's on screen.
+
+**Workaround:** The `describe-image` skill calls a separate vision model (GPT-4o, Qwen-VL) to describe the image as text, which is then returned to the main model. Playwright and other skills save images to `/mnt/user-data/outputs/` as HTTP links for the user to view in the preview panel.
+
+**Root cause:** Upstream — Open WebUI's MCP integration only passes `text` content blocks.
+
+## 6. Preview breaks after custom `container_name` or non-default compose layouts
+
+**Severity:** Medium (configuration-only)
+
+**Status (v4.0.0):** the class of "two settings must match" bugs was fixed by moving public-URL ownership to the server. The filter now reads the public URL from the `X-Public-Base-URL` response header — one place to set it.
+
+**What can still go wrong:** `PUBLIC_BASE_URL` on the `computer-use-server` container must still be reachable from the user's browser. Custom compose project names, removed `container_name:` pins, or missing DNS mean the browser sees links to an unreachable host — the preview iframe 404s even though the filter decorated it correctly.
+
+**Workaround:** Set `PUBLIC_BASE_URL` (server `.env`) to an externally reachable URL. If you built the patched Open WebUI image, set build-arg `COMPUTER_USE_SERVER_URL` to the same public domain (no scheme) so the `fix_preview_url_detection` regex matches.
+
+See [Open WebUI filter](/integrations/open-webui-filter#two-url-roles).

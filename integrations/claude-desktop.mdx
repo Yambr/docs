@@ -1,0 +1,61 @@
+---
+title: "Claude Desktop"
+description: "Connect Anthropic's desktop app to your Computer Use Server."
+---
+
+Claude Desktop speaks MCP over Streamable HTTP natively — add one entry to `claude_desktop_config.json`.
+
+## Config
+
+```json
+{
+  "mcpServers": {
+    "computer-use": {
+      "url": "http://localhost:8081/mcp",
+      "transport": "streamable-http",
+      "headers": {
+        "Authorization": "Bearer <MCP_API_KEY>",
+        "X-Chat-Id": "desktop-session"
+      }
+    }
+  }
+}
+```
+
+On macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`.
+On Windows: `%APPDATA%\Claude\claude_desktop_config.json`.
+
+Restart Claude Desktop. You should see the Computer Use tools listed in the tool picker.
+
+## Recommended: Single-user mode
+
+Since Claude Desktop is one user, flip the server to single-user mode so you don't have to manage `X-Chat-Id`:
+
+```bash
+echo "SINGLE_USER_MODE=true" >> .env
+docker compose restart computer-use-server
+```
+
+Now every request reuses the same sandbox. The `X-Chat-Id` header above can be anything.
+
+## Headers reference
+
+| Header | Required | Purpose |
+|---|---|---|
+| `Authorization` | If `MCP_API_KEY` is set | `Bearer <token>` |
+| `X-Chat-Id` | Yes (unless `SINGLE_USER_MODE=true`) | Session identifier → one sandbox per id |
+| `X-User-Email` | No | Per-user skills / PAT lookup |
+| `X-User-Name` | No | Display name (URL-encoded) |
+| `X-MCP-Servers` | No | Comma-separated MCP server names passed to the `sub_agent` |
+
+## Caveat: managed Yambr
+
+Managed Yambr does **not** expose a public `https://cu.yambr.com/mcp` — Computer Use is only reachable through the LiteLLM gateway at `api.yambr.com`. Claude Desktop uses the Anthropic API directly; bringing managed Yambr Computer Use into Claude Desktop requires either:
+
+- **Self-host** the Computer Use Server (use the config above against your local instance), or
+- **Use [chat.yambr.com](https://chat.yambr.com/)** instead of Claude Desktop.
+
+## Related
+
+- [MCP API reference](/api-reference/introduction) — headers, endpoints, tool list
+- [Self-hosting quickstart](/install/quickstart) — stand up your own server

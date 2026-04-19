@@ -1,0 +1,109 @@
+---
+title: "Comparison"
+description: "Open Computer Use vs open-terminal vs Claude.ai vs OpenAI Operator. A trade-off map, not a ranking."
+---
+
+Open Computer Use and [open-terminal](https://github.com/open-webui/open-terminal) solve the same core problem — give an LLM a place to run code — with fundamentally different architectures. This is not a ranking; it's a map of trade-offs.
+
+<Note>
+We respect the open-terminal team. If you spot an inaccuracy, [open an issue](https://github.com/Yambr/open-computer-use/issues) — we want this fair and factual.
+</Note>
+
+Claude.ai and OpenAI Operator are cloud-only, not self-hosted — the overview table has them for reference.
+
+## Overview
+
+| Feature | Open Computer Use | open-terminal | Claude.ai | OpenAI Operator |
+|---|---|---|---|---|
+| Self-hosted | Yes | Yes | No | No |
+| Any LLM | Yes (OpenAI-compatible) | Any (via Open WebUI) | Claude only | GPT only |
+| Code execution | Full Linux sandbox | Sandbox / bare metal | Sandbox | No |
+| Live browser | CDP streaming (shared, interactive) | No | Screenshot-based | Screenshot-based |
+| Terminal | ttyd + tmux (persistent, side panel) | PTY + WebSocket | IDE + terminal | N/A |
+| Sub-agent | Claude Code CLI, interactive TTY + MCP | N/A | Built-in | N/A |
+| Skills system | 13 built-in (auto-injected) + custom | Open WebUI native (text-only) | Custom instructions | N/A |
+| Document creation | PPTX/DOCX/XLSX/PDF via skills | No | Via code | N/A |
+| File preview | Server-side (docx/pdf/pptx/xlsx/code) | Client-side (via Open WebUI) | IDE | N/A |
+| Container isolation | Docker (runc), per chat | Shared container (OS-level users) | Docker (gVisor) | N/A |
+| MCP server | Streamable HTTP | FastMCP (stdio + streamable-http) | N/A | N/A |
+| Image size | ~11 GB (full stack) | ~2 GB / ~200 MB / ~100 MB | N/A | N/A |
+| Setup complexity | Docker Compose + reverse proxy + env config | Single `docker run` or `pip install` | N/A | N/A |
+| Jupyter notebooks | No | Yes (per-session kernels via nbclient) | No | No |
+| Bare metal | No (Docker required) | Yes (`pip install open-terminal`) | No | No |
+| Port proxy | No | Yes (HTTP reverse-proxy to localhost services) | No | No |
+| Ecosystem | Multi-client MCP (Open WebUI, n8n, OpenAI Agents SDK, LiteLLM) | Native Open WebUI integration + [Terminals](https://github.com/open-webui/terminals) orchestrator | N/A | N/A |
+
+## Architecture and isolation
+
+**Open Computer Use** creates a fresh Docker container per chat session. If the AI breaks something — installs wrong packages, corrupts files, fills disk — only that chat is affected. Next chat starts clean. Containers are GC'd after idle timeout; per-container limits (2 GB RAM, 1 CPU default) are enforced.
+
+**open-terminal** runs a single container (or bare-metal process) shared across sessions. Multi-user mode creates OS-level accounts with isolated home directories, file-ownership enforcement, and path validation. For container-per-user, the separate [Terminals](https://github.com/open-webui/terminals) project orchestrates dedicated containers.
+
+**Why it matters.** Non-technical users + agent executing arbitrary code is the worst case for a shared env. Container-per-chat makes every session disposable.
+
+**Trade-off.** 2 GB per container is a ceiling, not an allocation — idle or light tasks use very little. Chromium and LibreOffice can push the ceiling. open-terminal is lighter but shares kernel and network between users.
+
+## MCP tools — different design philosophies
+
+**Open Computer Use** — 5 high-level tools:
+
+| Tool | Role |
+|---|---|
+| `bash_tool` | Run commands with progress streaming, 15s heartbeats, 30K output cap |
+| `view` | Read files/dirs with line numbers, base64 images, binary detection |
+| `create_file` | Create files with auto-parent-dir |
+| `str_replace` | Find-and-replace with uniqueness validation |
+| `sub_agent` | Delegate to Claude Code (model selection, session resume, MCP auto-config, cost tracking) |
+
+**open-terminal** — 15+ fine-grained tools across files, processes, and notebooks.
+
+**Trade-off.** Few powerful primitives (the AI uses `bash_tool` for search, process mgmt, everything) vs. fine-grained operations that don't require shell knowledge.
+
+## Security
+
+| Aspect | Open Computer Use | open-terminal |
+|---|---|---|
+| Isolation | Docker containers | OS accounts (chmod 2770 + group membership) |
+| Privilege escalation | Non-root + passwordless sudo; `no-new-privileges` | Non-root + passwordless sudo (full image); no sudo in slim/alpine |
+| Resource limits | Per-container | OS-level only |
+| Egress firewall | Docker network policies | Built-in DNS whitelist (dnsmasq + iptables + ipset) |
+| API auth | Bearer token (`MCP_API_KEY`) | Bearer token (`hmac.compare_digest`) |
+| Path traversal | Sanitized `chat_id` + `safe_path` | `resolve_path` + `is_path_allowed` |
+
+## What Open Computer Use offers that open-terminal doesn't
+
+- Document creation skills — 13 built-in with scripts and templates for pptx/docx/xlsx/pdf
+- Skill auto-injection — structured instructions in the system prompt + per-user skills via Settings Wrapper
+- Live shared browser — Playwright + CDP, AI automates via CDP, user watches/interacts in the same Chromium
+- Claude Code sub-agent — model selection, session resume, cost tracking, auto-configured MCP servers
+- Server-side file preview — renders from any MCP client, not tied to Open WebUI
+- Container-per-chat isolation
+- Persistent terminal via ttyd + tmux; full escape hatch
+- Pre-installed stack (~180 packages: LibreOffice, Playwright, Tesseract, OpenCV, ImageMagick, GitLab CLI, fonts, ML libs)
+- Vision AI skill
+- Multi-client MCP tested with Open WebUI, n8n, OpenAI Agents SDK, LiteLLM
+- Container resurrection — saved metadata recreates GC'd containers with same volumes/env
+- Smart tool output — bash_tool streams with heartbeats, caps output, semantic exit codes
+
+## What open-terminal offers that we don't
+
+- Jupyter notebooks — per-session kernels
+- Bare-metal mode — `pip install`, no Docker
+- Port proxy — HTTP reverse-proxy to localhost services
+- Lightweight image variants (slim ~200 MB, alpine ~100 MB)
+- Document text extraction as API endpoint (11 formats)
+- Process stdin — send input to running processes
+- Session CWD tracking
+- Runtime package install via env vars
+- Docker-in-Docker — Docker CLI + Compose + Buildx pre-installed
+- TOML config files
+- Per-process JSONL logs with retention
+- Simpler setup — single `docker run`
+
+## When to choose what
+
+**Open Computer Use** — workflows that need browser automation, document creation, or Claude Code sub-agent. Container-per-chat isolation. Multi-client MCP.
+
+**open-terminal** — terminal-first workflows, especially in Open WebUI. Native integration, minimal setup, Jupyter, port proxy, image variants from ~100 MB.
+
+**Both together.** Open WebUI supports connecting to both — pick per task.

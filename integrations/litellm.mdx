@@ -1,0 +1,63 @@
+---
+title: "LiteLLM"
+description: "Connect a LiteLLM proxy to the Computer Use MCP endpoint — managed (api.yambr.com) or self-hosted."
+---
+
+LiteLLM's MCP proxy lets you register Computer Use as a tool-providing MCP server and expose it to any model call through the proxy.
+
+## Managed Yambr
+
+The managed gateway at [api.yambr.com](https://api.yambr.com) **is** a LiteLLM proxy with Computer Use already wired in. You don't configure anything — your Yambr API key unlocks both model traffic and Computer Use tools. See [Yambr LiteLLM gateway](/platform/litellm).
+
+This page is for teams running their own LiteLLM proxy against a self-hosted Computer Use Server.
+
+## Self-hosted LiteLLM config
+
+```yaml
+mcp_servers:
+  computer_use:
+    url: "http://computer-use-server:8081/mcp"
+    transport: "http"
+    auth_type: "bearer_token"
+    auth_value: "${MCP_API_KEY}"
+    extra_headers:
+      X-Chat-Id: "{chat_id}"
+      X-User-Email: "{user_email}"
+```
+
+Put this in the `mcp_servers` section of your LiteLLM config. The `{chat_id}` and `{user_email}` templates get filled from the incoming request context.
+
+## Networking
+
+If LiteLLM and the Computer Use Server run in the same Docker compose network, use the service name (`computer-use-server:8081`). Across hosts, use the public URL — matching the server's `PUBLIC_BASE_URL` for consistency.
+
+<Warning>
+If LiteLLM runs in **your** compose and Computer Use in ours, either:
+- Attach both to the same external Docker network, OR
+- Point LiteLLM at a publicly reachable URL (with `MCP_API_KEY` set and a reverse-proxy with TLS in front of `8081`).
+</Warning>
+
+## Claude Code through LiteLLM
+
+The sandbox's `sub_agent` tool runs Claude Code. To route Claude Code's own API traffic through LiteLLM, set the gateway vars in the Computer Use Server's `.env`:
+
+```bash
+ANTHROPIC_AUTH_TOKEN=sk-litellm-master-key
+ANTHROPIC_BASE_URL=https://litellm.internal/anthropic
+CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1
+DISABLE_PROMPT_CACHING=1
+ANTHROPIC_DEFAULT_SONNET_MODEL=anthropic/claude-sonnet-4-6
+ANTHROPIC_DEFAULT_OPUS_MODEL=anthropic/claude-opus-4-6
+ANTHROPIC_DEFAULT_HAIKU_MODEL=anthropic/claude-haiku-4-5
+```
+
+Full recipe (Azure / Bedrock variants, troubleshooting): [Claude Code gateway](/install/configuration#gateway-deploy-routing-claude-through-a-proxy).
+
+## MCP-servers-for-sub-agent
+
+LiteLLM can act as an MCP gateway for multiple servers. Pass `X-MCP-Servers: github,jira,slack` on the incoming Computer Use request — the server writes `~/.mcp.json` in the sandbox with URLs templated as `{ANTHROPIC_BASE_URL}/mcp/{server_name}`. Claude Code picks them up automatically. See [Sub-agents](/features/sub-agents).
+
+## Related
+
+- [Yambr LiteLLM gateway](/platform/litellm) — managed setup
+- [MCP API reference](/api-reference/introduction) — raw endpoint details

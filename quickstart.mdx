@@ -1,80 +1,83 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "From zero to a working Computer Use session — hosted on Yambr or self-hosted — in under five minutes."
 ---
 
-## Get started in three steps
+There are three good starting points. Pick the one that matches your goal.
 
-Get your documentation site running locally and make your first customization.
+## 1. Just want to try it
 
-### Step 1: Set up your local environment
+<Card title="Open chat.yambr.com" icon="comments" href="https://chat.yambr.com/">
+  Hosted Open WebUI with Computer Use already installed and wired up. Sign in, pick a model, ask the assistant to *"create a PowerPoint about Q1 sales"* — you'll see skills, the live browser, and file previews on a real example.
+</Card>
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+Good for: one-off experiments, demos, seeing what the system can do before committing.
 
-### Step 2: Deploy your changes
+## 2. Drive it from your own app (Yambr-hosted)
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+Use Yambr as the backend — OpenAI-compatible API, no Docker on your side.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+<Steps>
+  <Step title="Get an API key">
+    Sign in at [app.yambr.com](https://app.yambr.com/) and create a key. This is a standard OpenAI-compatible key — it works with the official `openai` SDK, `anthropic` SDK (via LiteLLM), or plain cURL. See [API keys](/platform/api-keys).
+  </Step>
+  <Step title="Point your client at api.yambr.com">
+    ```python
+    from openai import OpenAI
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    client = OpenAI(
+        api_key="sk-yambr-...",              # from app.yambr.com
+        base_url="https://api.yambr.com",    # LiteLLM gateway
+    )
 
-### Step 3: Go live
+    resp = client.chat.completions.create(
+        model="claude-sonnet-4-6",            # or any model enabled on your key
+        messages=[{"role": "user", "content": "Build me a landing page for a coffee shop"}],
+        tools=[...],                          # Computer Use tools are routed via cu.yambr.com
+    )
+    ```
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    Full walkthrough: [LiteLLM gateway](/platform/litellm).
+  </Step>
+  <Step title="Preview artifacts on cu.yambr.com">
+    Files the model creates (PDFs, screenshots, HTML) are served from `https://cu.yambr.com/files/{chat_id}/...` and can be embedded as iframes. Artifacts are reachable **only through the LiteLLM gateway** using your key — there is no direct public MCP endpoint. See [cu.yambr.com](/platform/cu-endpoint).
+  </Step>
+</Steps>
 
-## Next steps
+## 3. Self-host everything
 
-Now that you have your docs running, explore these key features:
+Run the whole stack on your own machine. You'll need Docker.
+
+```bash
+git clone https://github.com/Yambr/open-computer-use.git
+cd open-computer-use
+cp .env.example .env
+# Edit .env — at minimum set OPENAI_API_KEY (any OpenAI-compatible provider)
+
+# 1. Start the Computer Use Server (builds the workspace image on first run, ~15 min)
+docker compose up --build
+
+# 2. In another terminal, start Open WebUI
+docker compose -f docker-compose.webui.yml up --build
+```
+
+Open [http://localhost:3000](http://localhost:3000). After adding a model in Open WebUI, flip **Function Calling = Native** and **Stream Chat Response = On** — without those two, tools don't fire. Details: [Model settings](/install/model-settings).
+
+Full install guide: [Self-hosting](/install/quickstart) · [Configuration](/install/configuration) · [Docker details](/install/docker).
+
+## What next?
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="How it's built" icon="diagram-project" href="/architecture">
+    Computer Use Server, sandbox container per chat, six redundant MCP-native channels for the system prompt.
+  </Card>
+  <Card title="Skills catalogue" icon="wand-magic-sparkles" href="/skills/reference">
+    docx, xlsx, pptx, pdf, playwright-cli, sub-agent, frontend-design, and more.
+  </Card>
+  <Card title="MCP API reference" icon="code" href="/api-reference/introduction">
+    Initialize, list tools, call tools, browse resources — plain JSON-RPC over Streamable HTTP.
+  </Card>
+  <Card title="Integrations" icon="plug" href="/integrations/open-webui">
+    Open WebUI, Claude Desktop, LiteLLM, n8n, custom clients.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

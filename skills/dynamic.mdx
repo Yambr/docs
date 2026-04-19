@@ -1,0 +1,88 @@
+---
+title: "Dynamic skills"
+description: "Per-user skill resolution — cache layers, fallbacks, and bind-mounts."
+---
+
+<Frame>
+  <img src="/images/diagrams/dynamic-skills.svg" alt="Dynamic skill injection architecture" />
+</Frame>
+
+## Resolution pipeline
+
+On every chat start, the server calls `skill_manager.get_user_skills(email)`. The result resolves through **three fallback levels**:
+
+1. **Memory cache** — 60-second TTL. Same `(email)` hit twice in a minute = dict lookup.
+2. **Settings Wrapper API** — if `MCP_TOKENS_URL` is set, fetches the user's enabled skills.
+3. **Disk cache** — if the API is down but we cached last known good, reuse it.
+4. **Hardcoded defaults** — all 13 public skills.
+
+Without the Settings Wrapper, step 4 always wins — everyone gets the full public set.
+
+## System prompt injection
+
+The skill list becomes an `<available_skills>` XML block injected into the system prompt:
+
+```xml
+<available_skills>
+  <skill>
+    <name>docx</name>
+    <description>Create and edit Word documents with tracked changes</description>
+    <path>/mnt/skills/public/docx/</path>
+  </skill>
+  <!-- ... -->
+</available_skills>
+```
+
+The model reads this once per chat and then consults `SKILL.md` files on demand.
+
+## User skill mounts
+
+User-uploaded skills (ZIPs from the Settings Wrapper) are:
+
+1. Downloaded and extracted atomically: unzip to temp, rename to final.
+2. Cached under `/data/skills-cache/{name}/` on the host.
+3. Tracked in `.manifest.json` (name → SHA-256 + timestamp).
+4. Bind-mounted into the sandbox at `/mnt/skills/user/{name}/` — **read-only**.
+
+Stale cache reuse: if the API or download fails but old cache exists, use it. Docker daemon needs host paths for bind mounts — configured via `SKILLS_CACHE_HOST_PATH`.
+
+## Core functions (`skill_manager.py`)
+
+| Function | Purpose |
+|---|---|
+| `get_user_skills(email)` | Async — full resolution with all fallbacks |
+| `get_user_skills_sync(email)` | Sync — reads cache only (called from the Docker-creation thread) |
+| `ensure_skill_cached(skill)` | Download + extract user-uploaded ZIP |
+| `build_available_skills_xml(skills)` | `<available_skills>` for the system prompt |
+| `build_sub_agent_skills_text(skills)` | Skill list for the sub-agent prompt |
+| `get_skill_mounts(skills)` | Dict of bind mounts for user skills |
+
+## HTTP endpoints
+
+| Endpoint | Returns |
+|---|---|
+| `GET /system-prompt?user_email=X&chat_id=Y` | Rendered per-user prompt |
+| `GET /skill-mounts?user_email=X` | Bind-mount descriptors for user skills |
+| `GET /skill-list?user_email=X` | Formatted skill list for sub-agent prompts |
+
+## Configuration
+
+| Var | Default | Purpose |
+|---|---|---|
+| `MCP_TOKENS_URL` | _(empty)_ | Settings Wrapper URL |
+| `MCP_TOKENS_API_KEY` | _(empty)_ | Internal API key |
+| `SKILLS_CACHE_DIR` | `/data/skills-cache` | In-container cache path |
+| `SKILLS_CACHE_HOST_PATH` | `/tmp/skills-cache` | Host path for Docker mounts |
+
+## Verify
+
+```bash
+# System prompt should list skills
+curl "http://localhost:8081/system-prompt?user_email=admin@open-computer-use.dev&chat_id=test" | head -50
+
+# Bind mounts
+curl "http://localhost:8081/skill-mounts?user_email=admin@open-computer-use.dev"
+
+# Skill list
+curl "http://localhost:8081/skill-list?user_email=admin@open-computer-use.dev"
+```

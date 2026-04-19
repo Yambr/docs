@@ -1,0 +1,44 @@
+---
+title: "Model settings"
+description: "The two switches in Open WebUI that silently break Computer Use if wrong."
+---
+
+After you add a model in Open WebUI, you **must** flip two settings. The managed `chat.yambr.com` does this by default; self-hosters running the bundled compose stack also get it done via `init.sh`. If you install Open WebUI yourself, or you add a new model after the initial setup, check these by hand.
+
+| Setting | Value | Why |
+|---|---|---|
+| Function Calling | `Native` | Required for Computer Use tools to be invoked by the model. Without it, the model has no way to call `bash_tool`, `create_file`, etc. — it silently doesn't. |
+| Stream Chat Response | `On` | Enables real-time output streaming, including tool-call deltas. Without it, long-running tool sequences feel like the UI hung. |
+
+## Set globally (recommended)
+
+In **Admin → Settings → Models → Advanced Params**:
+
+```
+function_calling: native
+stream_response: true
+```
+
+These become `DEFAULT_MODEL_PARAMS` — every model picks them up without per-model clicks. The bundled `init.sh` writes these on first Open WebUI startup:
+
+```
+POST /api/v1/configs/models
+{
+  "default_model_params": {
+    "function_calling": "native",
+    "stream_response": true
+  }
+}
+```
+
+## Set per model
+
+If you want different behavior per model, override in the model's edit screen: **Workspace → Models → [model] → Advanced Params**.
+
+## Symptom: tools don't fire
+
+If the model replies in plain text every time without calling tools, 99% of the time Function Calling is `Default` instead of `Native`. The `Default` path relies on Open WebUI's own tool-call parsing, which doesn't play well with MCP tools wired through the Computer Use tool module.
+
+## Symptom: output hangs until complete
+
+Stream Chat Response is `Off`. Turn it on; tool call output will appear as it's produced.

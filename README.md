@@ -1,55 +1,57 @@
-# Mintlify Starter Kit
+# Yambr docs
 
-Use the starter kit to get your docs deployed and ready to customize.
+Source for [docs.yambr.com](https://docs.yambr.com/) — documentation for [Open Computer Use](https://github.com/Yambr/open-computer-use) as deployed on the Yambr platform (`api.yambr.com`, `app.yambr.com`, `chat.yambr.com`, `cu.yambr.com`).
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+Built with [Mintlify](https://mintlify.com/).
 
-- Guide pages
-- Navigation
-- Customizations
-- API reference pages
-- Use of popular components
-
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
-
-## AI-assisted writing
-
-Set up your AI coding tool to work with Mintlify:
+## Local preview
 
 ```bash
-npx skills add https://mintlify.com/docs
-```
-
-This command installs Mintlify's documentation skill for your configured AI tools like Claude Code, Cursor, Windsurf, and others. The skill includes component reference, writing standards, and workflow guidance.
-
-See the [AI tools guides](/ai-tools) for tool-specific setup.
-
-## Development
-
-Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
-
-```
 npm i -g mint
-```
-
-Run the following command at the root of your documentation, where your `docs.json` is located:
-
-```
 mint dev
 ```
 
-View your local preview at `http://localhost:3000`.
+Open http://localhost:3000. Edits to `.mdx` files hot-reload.
 
-## Publishing changes
+## Layout
 
-Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
+```
+/
+├── docs.json             # Navigation, branding, anchors
+├── index.mdx             # Landing
+├── quickstart.mdx
+├── introduction.mdx
+├── architecture.mdx
+├── platform/             # Yambr-specific services (api, app, chat, cu)
+├── install/              # Self-hosting
+├── features/             # Browser, terminal, code exec, sub-agents, file preview
+├── skills/               # Skills system
+├── integrations/         # Open WebUI, Claude Desktop, LiteLLM, n8n, custom
+├── reference/            # Comparison, system prompt, known bugs, changelog, contributing
+├── api-reference/        # MCP methods
+├── images/
+│   ├── diagrams/         # SVGs from the upstream repo
+│   ├── screenshots/      # Product screenshots
+│   └── openwebui-hero.png
+└── logo/
+    └── yambr.png
+```
 
-## Need help?
+## Content source
 
-### Troubleshooting
+Most of the technical content was ported from [github.com/Yambr/open-computer-use/tree/main/docs](https://github.com/Yambr/open-computer-use/tree/main/docs). When the upstream .md changes, mirror the update into the matching `.mdx` here.
 
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
+## Deploy
 
-### Resources
-- [Mintlify documentation](https://mintlify.com/docs)
+Pushes to `main` are picked up by the Mintlify GitHub App and shipped to [docs.yambr.com](https://docs.yambr.com/) automatically.
+
+## Editing tips
+
+- Link between docs with clean `/route` paths — e.g. `/platform/api-keys`, `/api-reference/mcp/initialize`.
+- Images live under `/images/...`; reference them absolute (`<img src="/images/diagrams/architecture.svg" />`).
+- Components available: `<Card>`, `<CardGroup>`, `<Steps>`, `<Step>`, `<Frame>`, `<Note>`, `<Warning>`, `<Tip>`, `<CodeGroup>`, `<AccordionGroup>`, `<Accordion>`.
+- When referring to the four Yambr services, prefer the domain form (`api.yambr.com`, `chat.yambr.com`, ...) — not "the API" / "the chat" — so readers can always grep for the right thing.
+
+## Contributing
+
+Small fixes: PR directly. Bigger rewrites: open an issue first. Canonical reference is still the upstream repo's `README.md`, `CHANGELOG.md`, and files under `docs/` — keep this site in sync.

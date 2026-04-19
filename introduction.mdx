@@ -1,0 +1,64 @@
+---
+title: "Introduction"
+description: "What Open Computer Use gives you, what makes it different, and why you'd pick it over Claude.ai, OpenAI Operator, or open-terminal."
+---
+
+## In one sentence
+
+Open Computer Use is a **self-hosted MCP server** that gives any LLM a full Ubuntu sandbox — one isolated Docker container per chat session — with a live browser, an interactive terminal, code execution in bash/Python/Node/Java, and 13+ document skills. Yambr runs a managed instance at `cu.yambr.com` behind the `api.yambr.com` LiteLLM gateway so you don't have to operate it yourself.
+
+## What you can do with it
+
+| Capability | Example prompt |
+|---|---|
+| Create a polished document | *"Write me a 5-page technical RFC in .docx with headings, tables, and tracked changes."* |
+| Analyse a spreadsheet | *"Open this .xlsx, pivot by region, and chart monthly revenue."* |
+| Build a landing page | *"Make a one-page site for a coffee shop. Use Tailwind. Show me the live preview."* |
+| Drive a real browser | *"Log in to our staging site, click through the onboarding flow, and screenshot each step."* |
+| Delegate to Claude Code | *"Clone this repo, run the tests, and open a PR with the fix."* — the sub-agent takes over with an interactive terminal |
+
+Every file the model creates gets a public URL that you can preview inline or download.
+
+## Key differentiators
+
+| Feature | Open Computer Use | Claude.ai (Claude Code web) | [open-terminal](https://github.com/open-webui/open-terminal) | OpenAI Operator |
+|---|---|---|---|---|
+| Self-hosted | Yes | No | Yes | No |
+| Any LLM | Yes (OpenAI-compatible) | Claude only | Any (via Open WebUI) | GPT only |
+| Code execution | Full Linux sandbox | Sandbox (Claude Code web) | Sandbox / bare metal | No |
+| Live browser | CDP streaming (shared, interactive) | Screenshot-based | No | Screenshot-based |
+| Terminal + Claude Code | ttyd + tmux + Claude Code CLI | Built-in (Claude Code web) | PTY + WebSocket | N/A |
+| Skills system | 13 built-in (auto-injected) + custom | Built-in skills + custom instructions | Open WebUI native (text-only) | N/A |
+| Container isolation | Docker (runc), per chat | Docker (gVisor) | Shared container (OS-level users) | N/A |
+
+See the [full comparison](/reference/comparison) for caveats.
+
+## What's inside the sandbox
+
+| Category | Tools |
+|---|---|
+| **Languages** | Python 3.12, Node.js 22, Java 21, Bun |
+| **Documents** | LibreOffice, Pandoc, python-docx, python-pptx, openpyxl |
+| **PDF** | pypdf, pdf-lib, reportlab, tabula-py, ghostscript |
+| **Images** | Pillow, OpenCV, ImageMagick, sharp, librsvg |
+| **Web** | Playwright (Chromium), Mermaid CLI |
+| **AI** | Claude Code CLI, Playwright MCP |
+| **OCR** | Tesseract (configurable languages) |
+| **Media** | FFmpeg |
+| **Diagrams** | Graphviz, Mermaid |
+| **Dev** | TypeScript, tsx, git |
+
+<Note>
+Skills are **model-agnostic**. Write a skill once with Claude Code in the terminal and then use it with any model in the chat — the auto-injected system prompt exposes every enabled skill to every model.
+</Note>
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="diagram-project" href="/architecture">
+    How a request flows from the chat through the MCP server into the sandbox.
+  </Card>
+  <Card title="Yambr Platform" icon="building" href="/platform/overview">
+    The four services that make up Yambr and what each is for.
+  </Card>
+</CardGroup>

@@ -1,0 +1,62 @@
+---
+title: "Requirements"
+description: "Hardware, OS, and services you need to self-host Open Computer Use."
+---
+
+## Host machine
+
+| | Minimum | Recommended |
+|---|---|---|
+| **OS** | Linux x86_64 | Linux x86_64 (Ubuntu 22.04+) |
+| **CPU** | 4 cores | 8+ cores |
+| **RAM** | 8 GB | 16+ GB |
+| **Disk** | 30 GB free | 100+ GB SSD (workspace image alone is ~10 GB) |
+| **Docker** | 24.0+ with Compose v2 | Latest stable |
+
+macOS and Windows work for local development via Docker Desktop, but production deployments should be Linux — Docker Desktop has resource ceilings and worse networking for multi-container stacks.
+
+## Per-chat sandbox resources
+
+Each active chat gets its own container. Defaults (overridable via `.env`):
+
+| Limit | Default | Env var |
+|---|---|---|
+| Memory | 2 GB | `CONTAINER_MEM_LIMIT=2g` |
+| CPU | 1.0 core | `CONTAINER_CPU_LIMIT=1.0` |
+
+Budget for concurrent users: `N chats × 2 GB` RAM plus overhead. Tune in `.env` — see [Configuration](/install/configuration).
+
+## External services you'll need
+
+- **An OpenAI-compatible LLM provider.** OpenAI, Anthropic (via LiteLLM), OpenRouter, Azure, self-hosted vLLM — anything that speaks `POST /chat/completions`. Required for the main chat.
+- **(Optional) Anthropic API** for the `sub_agent` (Claude Code) tool. Set `ANTHROPIC_AUTH_TOKEN` to enable.
+- **(Optional) A vision model** for the `describe-image` skill. Set `VISION_API_KEY`, `VISION_API_URL`, `VISION_MODEL`.
+
+## Ports
+
+| Service | Default port | Notes |
+|---|---|---|
+| Computer Use Server (MCP) | `8081` | `MCP_PORT` |
+| Open WebUI | `3000` | `OPENWEBUI_PORT` |
+
+Both are exposed on the host by the bundled Compose files. Put a reverse proxy in front for TLS.
+
+## A note on `PUBLIC_BASE_URL`
+
+The single most common mistake self-hosters make is leaving `PUBLIC_BASE_URL` at `http://localhost:8081` when deploying behind a domain. It must be a URL your **browser** can reach:
+
+```bash
+# Local dev (Docker Desktop)
+PUBLIC_BASE_URL=http://localhost:8081
+
+# LAN / production
+PUBLIC_BASE_URL=https://cu.your-domain.com
+```
+
+It's baked into the system prompt and into every file link. See [Configuration](/install/configuration).
+
+## Next
+
+<Card title="Install quickstart" icon="rocket" href="/install/quickstart">
+  `docker compose up --build` and you're running.
+</Card>

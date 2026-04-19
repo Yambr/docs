@@ -1,0 +1,130 @@
+---
+title: "Skills reference"
+description: "Per-skill capabilities, mount paths, and example invocations."
+---
+
+All public skills are mounted read-only at `/mnt/skills/public/{name}/`. Example skills are at `/mnt/skills/examples/{name}/`.
+
+## docx — Word documents
+
+**Location:** `/mnt/skills/public/docx/`
+
+- Create and edit `.docx` files.
+- Work with styles, tables, images.
+- OOXML schema validation.
+- Tracked changes via OOXML redlining (`<w:ins>` / `<w:del>`).
+- Comment tracking.
+
+```python
+from docx import Document
+
+doc = Document()
+doc.add_heading("Report", 0)
+doc.add_paragraph("Content here...")
+doc.save("/mnt/user-data/outputs/report.docx")
+```
+
+## pdf — PDF processing
+
+**Location:** `/mnt/skills/public/pdf/`
+
+- Extract text, tables, images.
+- Fill PDF forms (with annotations).
+- Create validation images.
+- Check bounding boxes.
+- Merge, split, flatten.
+
+```bash
+python3 /mnt/skills/public/pdf/scripts/fill_pdf_form_with_annotations.py \
+  /mnt/user-data/uploads/form.pdf \
+  /mnt/user-data/outputs/filled.pdf
+```
+
+## pptx — PowerPoint presentations
+
+**Location:** `/mnt/skills/public/pptx/`
+
+- Create presentations programmatically.
+- Convert HTML to PowerPoint via the bundled `html2pptx` library.
+- Manipulate slides, layouts, themes via OOXML.
+- Extract thumbnails for visual validation.
+
+```python
+from pptx import Presentation
+
+prs = Presentation()
+slide = prs.slides.add_slide(prs.slide_layouts[0])
+slide.shapes.title.text = "My Presentation"
+prs.save("/mnt/user-data/outputs/presentation.pptx")
+```
+
+## xlsx — Excel spreadsheets
+
+**Location:** `/mnt/skills/public/xlsx/`
+
+- Read/write `.xlsx` with openpyxl.
+- Formulas, formatting, charts, multiple worksheets.
+- Automatic recalculation via LibreOffice UNO (`recalc.py`).
+- Error scanning (`#REF!`, `#DIV/0!`).
+
+## sub-agent — delegate to Claude Code
+
+**Location:** `/mnt/skills/public/sub-agent/`
+
+Teaches the model when and how to call `sub_agent()`. Includes best-practice prompts, model selection guidance, and session-resume patterns. See [Sub-agents](/features/sub-agents).
+
+## playwright-cli — browser automation
+
+**Location:** `/mnt/skills/public/playwright-cli/`
+
+High-level Playwright wrappers: navigate, click, fill, screenshot, extract. Combines with the [live browser](/features/browser) so the user can step in when needed.
+
+## describe-image — vision AI
+
+**Location:** `/mnt/skills/public/describe-image/`
+
+Calls a separate vision model (GPT-4o, Qwen-VL, ...) to describe an image as text — the main model then reasons about the description. Works around the [Open WebUI image-in-tool-result limitation](/reference/known-bugs). Requires `VISION_API_KEY`, `VISION_API_URL`, `VISION_MODEL`.
+
+## frontend-design — production-grade UI
+
+**Location:** `/mnt/skills/public/frontend-design/`
+
+Opinionated React + Tailwind patterns. The model scaffolds, styles, and previews components that look like design-system work, not generic AI output.
+
+## webapp-testing — Playwright-driven QA
+
+**Location:** `/mnt/skills/public/webapp-testing/`
+
+Write and run Playwright test suites against a web app. Pairs with the sub-agent skill for multi-step regression runs.
+
+## doc-coauthoring — structured document work
+
+**Location:** `/mnt/skills/public/doc-coauthoring/`
+
+A workflow for collaborative document edits: extract outline, propose changes, diff, finalize. Good for long-form writing sessions.
+
+## test-driven-development — TDD enforcement
+
+**Location:** `/mnt/skills/public/test-driven-development/`
+
+Forces red-green-refactor: write failing test, implement, refactor. Useful when asking Claude Code to implement a feature inside the sandbox.
+
+## skill-creator — create a new skill
+
+**Location:** `/mnt/skills/public/skill-creator/`
+
+Walks the model through creating a skill folder, `SKILL.md`, scripts, and references. See [Creating skills](/skills/creating).
+
+## gitlab-explorer — GitLab via glab
+
+**Location:** `/mnt/skills/public/gitlab-explorer/`
+
+Browse projects, MRs, pipelines with the `glab` CLI. Requires a PAT — typically via the [Settings Wrapper](/skills/dynamic).
+
+## Example skills
+
+Optional, in `/mnt/skills/examples/`:
+
+`web-artifacts-builder`, `copy-editing`, `social-content`, `canvas-design`, `algorithmic-art`, `theme-factory`, `mcp-builder`, `product-marketing-context`, `writing-skills`, `internal-comms`, `single-cell-rna-qc`, `slack-gif-creator`, `skill-creator` (example variant).
+
+Enable via the Settings Wrapper or by adding the paths to the system prompt directly.

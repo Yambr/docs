@@ -1,0 +1,104 @@
+---
+title: "System prompt — six MCP-native tiers"
+description: "How the per-session system prompt is delivered, redundantly, across six different channels."
+---
+
+The Computer Use Server delivers the same per-session system prompt through **six channels**. All six render from the same source (`computer-use-server/system_prompt.py::render_system_prompt`) with a shared 60-second in-process cache, so fan-out cost is one render per `(chat_id, user_email)` per minute.
+
+**Redundancy is the point.** A client might strip `InitializeResult.instructions` and never call `resources/list` — but it will always call `tools/list`, and the tool descriptions nudge the model toward `/home/assistant/README.md` inside the sandbox. That file is always present.
+
+**Why not `@mcp.prompt("system")`?** MCP `prompts/*` is user-controlled (slash-commands the user explicitly picks) and `PromptMessage.role` is restricted to `{user, assistant}` — naming a prompt `"system"` both clashes with the spec and duplicates `InitializeResult.instructions`, which is the canonical field.
+
+## The tiers
+
+| # | Surface | Where it lives | Who uses it |
+|---|---|---|---|
+| 1 | Tool descriptions | `tools/list` — `bash_tool` + `view` docstrings mention `README.md` | Every MCP client |
+| 2 | `/home/assistant/README.md` | Rendered into the sandbox on container create via `put_archive` | Any model that runs `view` |
+| 3 | Static `instructions=` | FastMCP constructor — one-line pointer to `README` + `resources/list` | Claude Desktop, MCP Inspector; Agents SDK via `server.server_initialize_result` |
+| 4 | Dynamic `InitializeResult.instructions` | Per-request ContextVar swapped onto `mcp._mcp_server` as a `@property` | Same clients as #3, with chat-specific content |
+| 5 | `resources/list` + `resources/read` | Uploaded files as `FunctionResource` per chat, URI `file://uploads/{chat_id}/{encoded-rel-path}` | Agents SDK, Inspector, Claude Desktop |
+| 6 | `GET /system-prompt` HTTP | Backward-compat endpoint with header > query priority | Open WebUI filter; external integrations (n8n) |
+
+## Tier 1 — tool description nudges
+
+Docstrings of `bash_tool` and `view` end with:
+
+> If you've lost track of your environment (chat_id, file URLs, available skills), re-read `/home/assistant/README.md`.
+
+Deliberately **not** "read this first" — Tiers 3/4 already identify the content as `README.md`, so if the client surfaced it, the model already has it. This line is a **recovery hint**, not a forcing function.
+
+## Tier 2 — README.md in the sandbox
+
+When `docker_manager._create_container` spins up a chat's workspace, it calls `render_system_prompt_sync(chat_id, user_email)` and writes the result to `/home/assistant/README.md` via `container.put_archive`. Survives container removals because it lives in the chat's persistent workspace volume.
+
+Does **not** enumerate uploaded files — that's Tier 5 on every upload. README is static-per-container and changes only when `user_email` changes.
+
+## Tier 3 — static `instructions=`
+
+FastMCP constructor kwarg. A one-liner pointing at Tiers 2 and 5 so a client that only renders `InitializeResult.instructions` still learns where the per-session content lives.
+
+## Tier 4 — dynamic `InitializeResult.instructions`
+
+Same `instructions` field, but **per-request**. Relies on:
+
+1. `streamable_http_manager._handle_stateless_request` calls `self.app.create_initialization_options()` inside a per-request task (we run `stateless_http=True`).
+2. `lowlevel/server.py` reads `self.instructions` at that moment.
+3. `session.py` echoes into `InitializeResult.instructions`.
+
+`MCPContextMiddleware` pre-renders the prompt and stores it in `current_instructions: ContextVar[str]`. `_DynamicInstructionsServer` subclasses `mcp.server.lowlevel.Server` with a `@property` returning the ContextVar. After `FastMCP()` constructs the lowlevel server, we swap the class on the instance — no reconstruction.
+
+<Warning>
+Stateful mode would break this (long-lived sessions cache `init_options` at construction). Do **not** flip `stateless_http=False` without re-reading the SDK source.
+</Warning>
+
+**Private-API caveat.** `mcp._mcp_server` and `_resource_manager._resources` are touched. Pin `mcp` narrowly in `requirements.txt` — a minor bump requires re-verifying attribute shapes.
+
+## Tier 5 — uploaded files as MCP resources
+
+`resources/list` returns a `FunctionResource` per file with URI `file://uploads/{chat_id}/{encoded-rel-path}`. `resources/read` fetches content — text for `text/*` and a short MIME allowlist, base64 blob otherwise.
+
+`chat_id` is in the URI because Agents SDK / Inspector don't re-send `X-Chat-Id` on per-resource calls. URL-encoding: FastMCP's `ResourceTemplate.matches` uses `[^/]+` per template param — blocks nested paths. Flattening via `urllib.parse.quote` sidesteps it without forking the SDK.
+
+Dynamic registration: `sync_chat_resources(chat_id)` clears previous entries for that chat, re-adds from current filesystem state, under an `asyncio.Lock`. Called from container create + `POST /api/uploads/{chat_id}/{filename}`. Upload itself stays on HTTP — MCP has no upload primitive.
+
+## Tier 6 — HTTP `/system-prompt`
+
+Kept for the Open WebUI filter which fetches the prompt server-side and injects it into the LLM's system message. Priority:
+
+```
+X-Chat-Id | X-OpenWebUI-Chat-Id   > ?chat_id=           > "default"
+X-User-Email | X-OpenWebUI-User-Email > ?user_email=   > None
+```
+
+Response header `X-Public-Base-URL` is emitted so the filter's `outlet()` can build browser-facing archive/preview URLs from the server-owned `PUBLIC_BASE_URL`.
+
+## Render cache
+
+`render_system_prompt(chat_id, user_email)` is cache-backed with a 60-second TTL (`_RENDER_TTL_SECONDS`). Matches `skill_manager`'s memory-cache TTL. Middleware renders on **every** MCP request to pre-fill the ContextVar for Tier 4, so the cache is load-bearing — without it, every `tools/call` would re-hit the skills provider. Second request for the same `(chat_id, user_email)` = dict lookup.
+
+Invalidation: `invalidate_render_cache()` — no arg clears all; `chat_id` arg clears that chat. Used in tests; callable when skills change upstream.
+
+## Duplication analysis
+
+**Open WebUI via LiteLLM (main scenario)**
+
+- Filter `inlet()` fetches Tier 6, injects into `body["messages"]` → model sees it **once**.
+- Tier 4 `InitializeResult.instructions` is returned on `initialize` — LiteLLM is a tool-call proxy and does NOT forward `instructions` to the LLM. Tier 4 doesn't reach the model here.
+- Tier 2 README sits in the container; model only reads it if it actively calls `view`.
+- The only real duplication source is the Tier 1 recovery-nudge: a model that follows it adds a **second copy** of ~3–5K tokens.
+- **Total: up to 2 copies.**
+
+**Agents SDK / MCP Inspector / Claude Desktop (MCP-native scenario)**
+
+- No Open WebUI filter.
+- Integrator surfaces Tier 4 via `server.server_initialize_result.instructions` (Agents SDK) or Claude Desktop auto-applies it → model sees prompt **once**.
+- Tier 1 nudge: up to **second copy** if honored.
+- **Total: up to 2 copies.**
+
+**Why keep the nudge.** Without it, a client that strips the system prompt leaves the model in a sandbox with zero context. The cost is paid only when the model needs it (context thins out, hint gets re-attended).
+
+## See also
+
+- [MCP API reference](/api-reference/introduction)
+- [Open WebUI filter](/integrations/open-webui-filter) — how Tier 6 is consumed

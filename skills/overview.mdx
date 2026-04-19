@@ -1,0 +1,51 @@
+---
+title: "Skills overview"
+description: "How skills extend the AI — folders with SKILL.md instructions, scripts, and references, auto-injected into the system prompt."
+---
+
+Skills are how Open Computer Use teaches models domain-specific workflows without fine-tuning. Each skill is a folder with `SKILL.md` instructions (read by the AI before starting a task) and optional helper scripts and reference docs. Skills are mounted read-only inside every sandbox at `/mnt/skills/` and exposed to the model through the system prompt.
+
+## Why skills
+
+- **Repeatable quality.** The docx skill bundles tracked-changes via OOXML redlining — you get consistent Word output every time, across any model.
+- **Model-agnostic.** Claude, GPT-4o, Qwen, Mistral — same skill, same output shape. Write once, use everywhere.
+- **Pluggable.** Built-in skills are baked into the Docker image. User skills are uploaded as ZIPs and bind-mounted per user.
+- **Auto-discovery.** The server builds an `<available_skills>` XML block and injects it into the system prompt. The model picks the right skill without being named.
+
+## How a skill runs
+
+1. On chat start, `skill_manager.get_user_skills(email)` resolves which skills this user has enabled.
+2. The system prompt gets an `<available_skills>` block listing names, descriptions, and paths.
+3. The model picks a skill based on the task and reads the skill's `SKILL.md` via `view` tool.
+4. The skill's scripts live under `/mnt/skills/{category}/{name}/scripts/` — the model runs them via `bash_tool`.
+
+<Frame>
+  <img src="/images/diagrams/dynamic-skills.svg" alt="Dynamic per-user skill injection" />
+</Frame>
+
+## Categories
+
+| Category | Mount | Source |
+|---|---|---|
+| `public` | `/mnt/skills/public/{name}/` | Baked into the Docker image |
+| `example` | `/mnt/skills/examples/{name}/` | Baked; opt-in via Settings Wrapper |
+| `user` | `/mnt/skills/user/{name}/` | ZIP from Settings Wrapper, cached on host |
+
+Without the Settings Wrapper, all 13 public skills are always enabled for everyone.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="User guide" icon="book" href="/skills/user-guide">
+    What each skill does, how they appear to the model.
+  </Card>
+  <Card title="Full reference" icon="list" href="/skills/reference">
+    13 built-in skills + 14 examples with capabilities.
+  </Card>
+  <Card title="Dynamic injection" icon="gear" href="/skills/dynamic">
+    The internals — cache layers, fallbacks, mounts.
+  </Card>
+  <Card title="Creating a skill" icon="wand-magic-sparkles" href="/skills/creating">
+    Folder layout, SKILL.md format, publishing.
+  </Card>
+</CardGroup>

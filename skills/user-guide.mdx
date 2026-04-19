@@ -1,0 +1,86 @@
+---
+title: "Skills user guide"
+description: "What each built-in skill does, how they show up to the model, and how to add your own."
+---
+
+## How skills work
+
+1. **System prompt injection** — the server builds an `<available_skills>` XML block listing every enabled skill with its name, description, and file path.
+2. **Model reads `SKILL.md`** — before starting a task the AI opens the relevant skill's instructions via the `view` tool.
+3. **Scripts and references** — skills can bundle Python/bash helpers and reference docs that the AI invokes with `bash_tool`.
+
+Skills are mounted read-only into every sandbox at `/mnt/skills/`.
+
+## Built-in skills (13 public)
+
+Always available, baked into the Docker image:
+
+| Skill | What it does |
+|---|---|
+| **docx** | Word — create, edit, tracked changes, comments |
+| **pdf** | PDF — extract text/tables, create, merge/split, fill forms |
+| **pptx** | PowerPoint — create with html2pptx, edit via OOXML |
+| **xlsx** | Excel — formulas, formatting, analysis, visualization |
+| **sub-agent** | Delegate to autonomous Claude Code |
+| **playwright-cli** | Browser automation — navigate, fill forms, screenshot |
+| **describe-image** | Image analysis via Vision AI |
+| **frontend-design** | Production-grade UI / web components |
+| **webapp-testing** | Test web apps with Playwright |
+| **doc-coauthoring** | Structured document co-authoring workflow |
+| **test-driven-development** | TDD workflow enforcement |
+| **skill-creator** | Guide for creating new skills |
+| **gitlab-explorer** | GitLab repo operations via `glab` |
+
+## Example skills (14)
+
+Optional, in the image at `/mnt/skills/examples/`:
+
+`web-artifacts-builder`, `copy-editing`, `social-content`, `canvas-design`, `algorithmic-art`, `theme-factory`, `mcp-builder`, `product-marketing-context`, `writing-skills`, `internal-comms`, `single-cell-rna-qc`, `slack-gif-creator`, `skill-creator` (example variant).
+
+## Creating a skill
+
+A skill is a folder with `SKILL.md` at the root:
+
+```
+my-skill/
+├── SKILL.md          # Required — instructions for the AI
+├── scripts/          # Optional — helper scripts
+│   └── process.py
+└── references/       # Optional — reference docs
+    └── guide.md
+```
+
+### `SKILL.md` format
+
+```markdown
+---
+name: my-skill-name
+description: Brief description (this is what the AI sees in the skills list)
+---
+
+# My Skill Name
+
+Instructions for the AI. Be specific about:
+- When to use this skill
+- Step-by-step workflow
+- Which scripts to run and how
+- Expected output format
+```
+
+See `skills/public/` in [the repo](https://github.com/Yambr/open-computer-use/tree/main/skills/public) for real examples.
+
+## Per-user skill management
+
+In the production Yambr setup we built a **skill registry** (settings-wrapper):
+
+- The AI manages skills through a dedicated `settings-manager` skill.
+- Users enable/disable skills per account.
+- Custom skills are uploaded as ZIPs and cached on the server.
+
+For community use, a [mock settings-wrapper](https://github.com/Yambr/open-computer-use/tree/main/settings-wrapper) ships with the API contract. All 13 public skills work out of the box without it.
+
+## Related
+
+- [Skills reference](/skills/reference) — deeper per-skill details
+- [Dynamic skills](/skills/dynamic) — under-the-hood injection
+- [Creating skills](/skills/creating) — publishing your own

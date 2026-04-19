@@ -1,0 +1,63 @@
+---
+title: "Code execution"
+description: "bash_tool runs anything in the sandbox — Python, Node, Java, Bun, ffmpeg, ImageMagick, git."
+---
+
+The `bash_tool` primitive runs arbitrary shell commands inside the chat's sandbox. Combined with the pre-installed stack, the model can do anything a developer can do.
+
+## Languages
+
+| Runtime | Version |
+|---|---|
+| Python | 3.12.3 (107 packages, incl. pandas/numpy/opencv/playwright) |
+| Node.js | 22 (21 packages, incl. TypeScript/pdf-lib/mermaid-cli) |
+| Bun | latest |
+| Java | OpenJDK 21 |
+
+## Behavior
+
+- **Streaming output.** The tool streams stdout/stderr back to the model with 15-second heartbeats — no silent hangs.
+- **Truncation-aware.** Output caps at 30K chars (first 15K + last 15K), so a runaway grep doesn't blow the context window.
+- **Semantic exit codes.** `grep` returning `1` is treated as "no match," not an error.
+- **Timeout.** Commands die after `COMMAND_TIMEOUT` seconds (default `120`). Override per call.
+
+## Typical patterns
+
+**Data wrangling**
+
+```python
+python3 -c "
+import pandas as pd
+df = pd.read_csv('/mnt/user-data/uploads/sales.csv')
+print(df.groupby('region')['revenue'].sum())
+"
+```
+
+**Media**
+
+```bash
+ffmpeg -i /mnt/user-data/uploads/clip.mov -vf scale=720:-1 /mnt/user-data/outputs/clip.mp4
+```
+
+**Git**
+
+```bash
+git clone https://github.com/org/repo /tmp/repo && cd /tmp/repo && npm test
+```
+
+**Server**
+
+```bash
+cd /home/assistant && python3 -m http.server 3000
+```
+
+The sandbox has its own network namespace — long-running servers stay up until the container is GC'd.
+
+## When to prefer a skill
+
+If a task fits a skill (docx, xlsx, pptx, pdf, playwright-cli, …), the skill has curated scripts that are faster, safer, and produce more polished output than hand-rolled bash. The model picks automatically based on the `<available_skills>` block in its system prompt.
+
+## Related
+
+- [Skills reference](/skills/reference)
+- [Sub-agents](/features/sub-agents) — for multi-step, autonomous tasks

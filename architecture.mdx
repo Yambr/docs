@@ -1,0 +1,81 @@
+---
+title: "Architecture"
+description: "How chats, the Computer Use Server, and per-session Docker sandboxes fit together."
+---
+
+## Big picture
+
+<Frame>
+  <img src="/images/diagrams/architecture.svg" alt="Open Computer Use architecture" />
+</Frame>
+
+Three moving parts:
+
+1. **MCP client** — Open WebUI, Claude Desktop, LiteLLM, n8n, or anything that speaks MCP over Streamable HTTP.
+2. **Computer Use Server** (the orchestrator) — stateless HTTP service that routes MCP requests to per-chat sandbox containers, serves the system prompt, exposes the live browser/terminal, and hosts file previews.
+3. **Sandbox container** — one Docker container per `X-Chat-Id`. Full Ubuntu userspace with the tools listed in [Introduction](/introduction#whats-inside-the-sandbox).
+
+## Data flow
+
+<Frame>
+  <img src="/images/diagrams/data-flow.svg" alt="Data flow from chat to sandbox" />
+</Frame>
+
+Each MCP request carries `X-Chat-Id` (mandatory in strict multi-user mode). The orchestrator creates the sandbox lazily on first use and tears it down after `CONTAINER_MAX_AGE_HOURS`. Everything is isolated — the AI can install packages, create files, run servers, and nothing leaks between users.
+
+## Sandbox contents
+
+<Frame>
+  <img src="/images/diagrams/sandbox-contents.svg" alt="What's inside each sandbox container" />
+</Frame>
+
+## The live browser
+
+<Frame>
+  <img src="/images/diagrams/shared-browser.svg" alt="Shared CDP browser between the model and the user" />
+</Frame>
+
+Each sandbox runs Chromium with the Chrome DevTools Protocol exposed. The orchestrator bridges CDP over WebSocket, so the user sees exactly what the model is doing — and can click through if needed. See [Live browser](/features/browser).
+
+## The terminal tab
+
+<Frame>
+  <img src="/images/diagrams/terminal-flow.svg" alt="ttyd + tmux + Claude Code CLI in the terminal tab" />
+</Frame>
+
+Open WebUI gets a dedicated terminal tab backed by `ttyd + tmux`. The sub-agent tool launches Claude Code CLI inside a named tmux session — you can attach, watch, or take over. See [Terminal](/features/terminal).
+
+## File pipeline
+
+<Frame>
+  <img src="/images/diagrams/file-flow.svg" alt="File upload, sandbox, preview pipeline" />
+</Frame>
+
+Uploads land on the orchestrator, get mounted into `/home/assistant/uploads/{chat_id}/` inside the sandbox, and are re-exposed as MCP `resources/list` entries. Files the model creates are served back through the same public endpoint (`cu.yambr.com/files/...` in managed Yambr; `http://localhost:8081/files/...` self-hosted) and auto-previewed in Open WebUI's artifacts panel. See [File preview](/features/file-preview).
+
+## The system prompt — six redundant channels
+
+The per-chat system prompt isn't just pasted into a single field. It's delivered through **six MCP-native and HTTP channels** so the model can recover its environment even if a client strips one of them:
+
+1. Tool descriptions (every MCP tool includes context)
+2. `/home/assistant/README.md` inside the sandbox (readable by the `view` tool)
+3. `InitializeResult.instructions` (MCP handshake)
+4. `resources/list` + `resources/read` (uploaded files)
+5. HTTP `GET /system-prompt` (legacy integrations)
+6. HTTP `GET /skill-list` (for sub-agent delegation)
+
+Full map: [System prompt reference](/reference/system-prompt).
+
+## Session isolation
+
+Controlled by `SINGLE_USER_MODE`:
+
+| Mode | `X-Chat-Id` | Behavior |
+|---|---|---|
+| _unset_ | Yes | Isolated container per chat ID |
+| _unset_ | No | Shared `default` container + warning in every tool response |
+| `true` | _any_ | Always one `default` container; header ignored |
+| `false` | Yes | Strict: isolated container per chat ID |
+| `false` | No | **Rejected** with error |
+
+Managed Yambr runs strict multi-user mode. See [MCP API reference](/api-reference/introduction) for header details.

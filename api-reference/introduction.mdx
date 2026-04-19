@@ -1,33 +1,129 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: "API reference"
+description: "MCP over Streamable HTTP — endpoints, headers, tools, and dynamic configuration endpoints."
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+The Computer Use Server speaks standard [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) over **Streamable HTTP**. Any MCP-compatible client can connect.
 
-## Welcome
+Registered in the [MCP Registry](https://github.com/modelcontextprotocol/registry) as `io.github.yambr/open-computer-use`.
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+## Endpoint
 
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+**Self-hosted:** `http://localhost:8081/mcp`
+
+**Managed Yambr:** The raw MCP endpoint is **not** publicly reachable — go through [api.yambr.com](/platform/litellm) with a Yambr API key. See [cu.yambr.com](/platform/cu-endpoint).
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+Set the `MCP_API_KEY` environment variable on the server and pass as a Bearer token:
 
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
 ```
+Authorization: Bearer <MCP_API_KEY>
+```
+
+Leave `MCP_API_KEY` empty for local dev (no auth).
+
+## Required headers
+
+<Warning>
+**`X-Chat-Id` is mandatory.** Without it (and with `SINGLE_USER_MODE=false`), the server returns an error. Every request must include a unique session identifier.
+</Warning>
+
+| Header | Purpose | Required |
+|---|---|---|
+| `X-Chat-Id` | Session identifier — one sandbox container per id | Yes |
+| `Authorization` | `Bearer <MCP_API_KEY>` | If `MCP_API_KEY` is set |
+| `X-User-Email` | User email (per-user skills, PAT lookup, logging) | No |
+| `X-User-Name` | Display name (URL-encoded) | No |
+| `X-MCP-Servers` | Comma-separated MCP server names for the Claude Code sub-agent | No |
+| `Mcp-Session-Id` | Session id from `initialize` response; include on subsequent calls | After initialize |
+
+## Session isolation modes
+
+Controlled by `SINGLE_USER_MODE`:
+
+| Mode | `X-Chat-Id` | Behavior |
+|---|---|---|
+| _unset_ | Yes | Isolated container per chat id |
+| _unset_ | No | Shared `default` container + warning appended to every tool response |
+| `true` | _any_ | Always one `default` container; header ignored |
+| `false` | Yes | Strict: isolated container per chat id |
+| `false` | No | **Rejected** with error |
+
+See [MCP methods](/api-reference/mcp/initialize) for request examples.
+
+## Available tools
+
+| Tool | Description |
+|---|---|
+| `bash_tool` | Execute bash commands in the sandbox with streaming output |
+| `view` | View files and directories with line numbers |
+| `create_file` | Create files (auto-creates parent directories) |
+| `str_replace` | Edit files via find-and-replace with uniqueness validation |
+| `sub_agent` | Delegate to an autonomous Claude Code agent |
+
+Full signatures: [tools/list](/api-reference/mcp/tools-list) · [tools/call](/api-reference/mcp/tools-call).
+
+## Native MCP primitives beyond tools
+
+Three more native primitives, all scoped by `X-Chat-Id`:
+
+| Primitive | What you get | How |
+|---|---|---|
+| `InitializeResult.instructions` | The per-chat system prompt as a string, delivered in the handshake | Dynamic — re-rendered each stateless request from `X-Chat-Id` / `X-User-Email` headers |
+| `resources/list` + `resources/read` | Uploaded files as `file://uploads/{chat_id}/{encoded-rel-path}` | Auto-registered on container create + on every `POST /api/uploads` |
+
+In addition, `/home/assistant/README.md` inside the sandbox carries the same prompt text — any model that runs `view` can recover its environment even if the client stripped every MCP handshake field. Full map: [system prompt reference](/reference/system-prompt).
+
+<Note>
+The server intentionally does **not** expose the system prompt via `prompts/get`. MCP `prompts/*` is user-controlled (slash commands) and `PromptMessage.role` is restricted to `user | assistant` — duplicating `InitializeResult.instructions` there would be off-spec.
+</Note>
+
+## Dynamic configuration endpoints
+
+Non-MCP HTTP endpoints that MCP clients should use instead of hardcoding:
+
+| Endpoint | Returns |
+|---|---|
+| `GET /system-prompt?chat_id=...&user_email=...` | Full per-session system prompt (plain text) |
+| `GET /skill-list?user_email=...` | Skills list for sub-agent prompts |
+| `GET /mcp-info` | Available tools, required headers, endpoint URL (JSON) |
+
+## Browser endpoint (CDP)
+
+```
+GET /browser/{chat_id}/status
+GET /browser/{chat_id}/json
+WS  /browser/{chat_id}/devtools/page/{page_id}
+```
+
+See [Live browser](/features/browser).
+
+## Terminal endpoint
+
+```
+GET  /terminal/{chat_id}/status
+POST /terminal/{chat_id}/start-ttyd
+WS   /terminal/{chat_id}/ws
+```
+
+See [Terminal tab](/features/terminal).
+
+## File endpoint
+
+```
+GET /files/{chat_id}/{path}
+GET /preview/{chat_id}/{path}
+GET /files/{chat_id}/archive        # zip of everything in this chat
+```
+
+See [File preview](/features/file-preview) and [cu.yambr.com](/platform/cu-endpoint).
+
+## Per-method details
+
+<CardGroup cols={2}>
+  <Card title="initialize" icon="handshake" href="/api-reference/mcp/initialize">Open a session and get `Mcp-Session-Id`.</Card>
+  <Card title="tools/list" icon="list" href="/api-reference/mcp/tools-list">Enumerate available tools.</Card>
+  <Card title="tools/call" icon="play" href="/api-reference/mcp/tools-call">Invoke a tool.</Card>
+  <Card title="resources/list" icon="folder-open" href="/api-reference/mcp/resources">Browse uploaded files.</Card>
+</CardGroup>

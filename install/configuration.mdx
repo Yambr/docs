@@ -1,0 +1,119 @@
+---
+title: "Configuration"
+description: "Every environment variable you can set, grouped by how often you'll touch them."
+---
+
+All configuration lives in `.env` (copy from `.env.example`). Variables are grouped from most-to-least-frequently-changed.
+
+## Required
+
+| Var | Default | Purpose |
+|---|---|---|
+| `ADMIN_EMAIL` | `admin@open-computer-use.dev` | Admin account created on first Open WebUI startup. **Change.** |
+| `ADMIN_PASSWORD` | `change-me` | Admin password. **Change.** |
+| `WEBUI_SECRET_KEY` | `change-me` | Open WebUI session signing. Generate with `openssl rand -hex 32`. |
+| `PUBLIC_BASE_URL` | `http://localhost:8081` | Browser-reachable URL of the Computer Use Server. **The single source of truth** — baked into the system prompt and returned to the Open WebUI filter via the `X-Public-Base-URL` response header. Must match what the user's browser can actually hit. |
+| `OPENAI_API_KEY` | — | LLM provider key (any OpenAI-compatible). |
+| `OPENAI_API_BASE_URL` | — | Override provider base URL (OpenRouter, Azure, LiteLLM, self-hosted vLLM). |
+| `MCP_API_KEY` | — | Bearer token for the MCP endpoint. Leave empty for local dev; **set** for anything exposed beyond localhost. |
+| `POSTGRES_PASSWORD` | `openwebui` | PostgreSQL password. **Change for production.** |
+
+## Optional features
+
+Each feature group is all-or-nothing — uncomment the full block to enable.
+
+### Vision (describe-image skill)
+
+```bash
+VISION_API_KEY=
+VISION_API_URL=https://api.openai.com/v1
+VISION_MODEL=gpt-4o
+```
+
+### Claude Code sub-agent
+
+```bash
+ANTHROPIC_AUTH_TOKEN=
+ANTHROPIC_BASE_URL=https://api.anthropic.com
+```
+
+Running through a corporate gateway (LiteLLM / Azure / Bedrock)? See [Claude Code gateway recipe](/reference/system-prompt).
+
+### Settings Wrapper (per-user skills + PATs)
+
+```bash
+MCP_TOKENS_URL=
+MCP_TOKENS_API_KEY=
+```
+
+The Settings Wrapper stores encrypted per-user Personal Access Tokens (GitLab, Jira, Confluence, ...) and gates custom skills by user email. Optional — without it everyone gets the same 13 built-in skills.
+
+## Tuning
+
+Change only if you know why.
+
+| Var | Default | Effect |
+|---|---|---|
+| `MCP_PORT` | `8081` | Computer Use Server port |
+| `OPENWEBUI_PORT` | `3000` | Open WebUI port |
+| `DOCKER_IMAGE` | `open-computer-use:latest` | Sandbox image tag |
+| `CONTAINER_MEM_LIMIT` | `2g` | Per-sandbox memory cap |
+| `CONTAINER_CPU_LIMIT` | `1.0` | Per-sandbox CPU cap |
+| `COMMAND_TIMEOUT` | `120` | `bash_tool` wall-clock timeout (s) |
+| `SUB_AGENT_TIMEOUT` | `3600` | Sub-agent wall-clock timeout (s) |
+| `SINGLE_USER_MODE` | _(unset)_ | See table below. |
+| `TOOL_RESULT_MAX_CHARS` | `50000` | Truncate/upload threshold for oversized tool results. |
+| `TOOL_RESULT_PREVIEW_CHARS` | `2000` | Size of preview the model sees after truncation. |
+| `SUB_AGENT_DEFAULT_MODEL` | `sonnet` | Claude Code default model name. |
+| `SUB_AGENT_MAX_TURNS` | `25` | Sub-agent autonomy cap. |
+| `CONTAINER_MAX_AGE_HOURS` | `24` | Idle-sandbox garbage collection. |
+| `DATA_MAX_AGE_DAYS` | `7` | File retention under `/data`. |
+
+### `SINGLE_USER_MODE`
+
+| Value | `X-Chat-Id` | Behavior |
+|---|---|---|
+| _unset_ | Yes | Isolated container per chat id |
+| _unset_ | No | Shared `default` container + warning appended to every tool response |
+| `true` | _any_ | Always one `default` container; header ignored |
+| `false` | Yes | Strict: isolated container per chat id |
+| `false` | No | Reject with an error |
+
+Use `true` for Claude Desktop / single-user setups. Use `false` for production multi-user.
+
+## Gateway deploy (routing Claude through a proxy)
+
+Leave **all** commented for the standard Anthropic API. Uncomment as a group when Claude Code goes through a gateway:
+
+```bash
+ANTHROPIC_MODEL=
+ANTHROPIC_DEFAULT_SONNET_MODEL=
+ANTHROPIC_DEFAULT_OPUS_MODEL=
+ANTHROPIC_DEFAULT_HAIKU_MODEL=
+CLAUDE_CODE_SUBAGENT_MODEL=
+CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=
+DISABLE_PROMPT_CACHING=
+DISABLE_PROMPT_CACHING_SONNET=
+DISABLE_PROMPT_CACHING_OPUS=
+DISABLE_PROMPT_CACHING_HAIKU=
+```
+
+## Advanced
+
+```bash
+OPENWEBUI_VERSION=0.8.12           # pinned Open WebUI version for the build
+ENABLE_OPENAI_API_SSL_VERIFY=true
+```
+
+## Open WebUI container env (separate from the server)
+
+These live on the **open-webui** service, not the Computer Use Server. They're already set by `docker-compose.webui.yml`; you only set them yourself if you embed Open WebUI in your own compose/Kubernetes/Portainer stack:
+
+| Var | Default | Effect if unset |
+|---|---|---|
+| `CHAT_RESPONSE_MAX_TOOL_CALL_RETRIES` | `200` | Upstream default of `30` truncates multi-step tasks. |
+| `TOOL_RESULT_MAX_CHARS` | `50000` | Large tool results truncate silently. |
+| `TOOL_RESULT_PREVIEW_CHARS` | `2000` | Preview size after truncation/upload. |
+| `ORCHESTRATOR_URL` | _(empty)_ | Internal URL of the Computer Use Server. Seeded into both Tool and Filter valves by `init.sh`. |
+
+See [Open WebUI integration](/integrations/open-webui) for the full embedding checklist.

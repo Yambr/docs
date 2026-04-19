@@ -1,0 +1,64 @@
+---
+title: "GET /system-prompt"
+description: "HTTP endpoint for clients that can't (or don't want to) consume the prompt through MCP."
+---
+
+`GET /system-prompt` returns the full per-session system prompt as plain text. It's Tier 6 of the [six system-prompt tiers](/reference/system-prompt) — kept because the Open WebUI filter needs it, and because it's the simplest integration for anything that isn't an MCP client.
+
+## Request
+
+```bash
+curl "http://localhost:8081/system-prompt?chat_id=my-session&user_email=user@example.com"
+```
+
+## Priority
+
+The server resolves `chat_id` and `user_email` from headers first, then query params, then defaults:
+
+```
+X-Chat-Id | X-OpenWebUI-Chat-Id     > ?chat_id=           > "default"
+X-User-Email | X-OpenWebUI-User-Email > ?user_email=     > None
+```
+
+This matches how the rest of the server reads session identity.
+
+## Response
+
+- **Body** — rendered system prompt text. Includes `<available_skills>`, file URL hints, skill mount paths, and the per-chat identity block.
+- **Header** — `X-Public-Base-URL: <PUBLIC_BASE_URL>`. The Open WebUI filter caches this alongside the prompt so its `outlet()` can build browser-facing archive/preview links without its own Valve.
+
+## Cache
+
+`render_system_prompt(chat_id, user_email)` is cache-backed with a 60-second TTL. Second request for the same `(chat_id, user_email)` is a dict lookup. Cache is load-bearing — the MCP middleware calls it on every request to pre-fill the ContextVar for Tier 4.
+
+## Usage pattern for custom clients
+
+```python
+import requests
+
+r = requests.get(
+    "http://localhost:8081/system-prompt",
+    params={"chat_id": "my-session", "user_email": "user@example.com"},
+    headers={"Authorization": f"Bearer {MCP_API_KEY}"},
+)
+r.raise_for_status()
+system_prompt = r.text
+public_base_url = r.headers["X-Public-Base-URL"]
+
+# Inject into your LLM call as the system message.
+# Use public_base_url when rewriting file links in UI.
+```
+
+## Related endpoints
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /skill-list?user_email=...` | Skills list for sub-agent prompts |
+| `GET /skill-mounts?user_email=...` | Docker bind-mounts for user skills |
+| `GET /mcp-info` | Available tools, required headers, endpoint URL (JSON) |
+| `GET /health` | `{"status":"healthy"}` |
+
+## Related
+
+- [System prompt reference](/reference/system-prompt) — the six-tier delivery model
+- [Open WebUI filter](/integrations/open-webui-filter) — how Tier 6 gets consumed

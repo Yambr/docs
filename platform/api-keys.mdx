@@ -1,0 +1,92 @@
+---
+title: "API keys"
+description: "Create and manage Yambr API keys at app.yambr.com."
+---
+
+## Create a key
+
+<Steps>
+  <Step title="Sign in">
+    Go to [app.yambr.com](https://app.yambr.com/) and sign in (or create an account).
+  </Step>
+  <Step title="Open API keys">
+    Navigate to **Settings → API keys**.
+  </Step>
+  <Step title="Create">
+    Click **Create key**, name it (e.g. `local-dev`, `prod-backend`), and copy the value. Keys are shown **only once** — store it in a secret manager.
+  </Step>
+</Steps>
+
+## Key format
+
+Yambr API keys look like standard OpenAI keys:
+
+```
+sk-yambr-...
+```
+
+They're used as `Authorization: Bearer` tokens against `https://api.yambr.com`.
+
+## Use the key
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.yambr.com/chat/completions \
+  -H "Authorization: Bearer sk-yambr-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-6",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+```python Python (openai)
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="sk-yambr-...",
+    base_url="https://api.yambr.com",
+)
+
+resp = client.chat.completions.create(
+    model="claude-sonnet-4-6",
+    messages=[{"role": "user", "content": "Hello"}],
+)
+```
+
+```javascript Node (openai)
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: "sk-yambr-...",
+  baseURL: "https://api.yambr.com",
+});
+
+const resp = await client.chat.completions.create({
+  model: "claude-sonnet-4-6",
+  messages: [{ role: "user", content: "Hello" }],
+});
+```
+
+</CodeGroup>
+
+See [LiteLLM gateway](/platform/litellm) for the full tour, including how Computer Use tools get wired into a chat completion call.
+
+## Security
+
+<Warning>
+Treat Yambr keys like database passwords:
+
+- **Never commit them to git.** Use `.env` + `.gitignore`, or a secret manager (Doppler, 1Password, Vault).
+- **Never ship them to a browser.** Call `api.yambr.com` only from your backend. If you need a browser-visible token, proxy through your own API.
+- **Rotate on exposure.** Delete the old key in the dashboard and issue a new one.
+</Warning>
+
+## Revoking
+
+In the dashboard, find the key row and click **Revoke**. Revocation is immediate — in-flight requests fail with `401 Unauthorized`.
+
+## Rate limits & quotas
+
+Limits depend on your plan. The dashboard shows real-time usage and any headroom you have left. If you're hitting limits, contact support via [Telegram](https://t.me/yambrcom) or [open a GitHub issue](https://github.com/Yambr/open-computer-use/issues).

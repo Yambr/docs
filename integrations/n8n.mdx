@@ -1,0 +1,46 @@
+---
+title: "n8n"
+description: "Use Computer Use as an MCP Tool node in an n8n workflow."
+---
+
+[n8n](https://n8n.io)'s **MCP Tool** node speaks MCP over Streamable HTTP — add Computer Use as one more tool provider.
+
+## Config
+
+| Field | Value |
+|---|---|
+| URL | `http://computer-use-server:8081/mcp` (same Docker network) or `https://cu.example.com/mcp` (public) |
+| Auth | `Authorization: Bearer <MCP_API_KEY>` |
+| Headers | `X-Chat-Id: {{ $execution.id }}` |
+| Optional headers | `X-User-Email`, `X-MCP-Servers` |
+
+## Pattern: AI-assisted pipeline
+
+A useful pattern is to wire Computer Use into an AI agent node in n8n:
+
+1. **Trigger** — webhook / schedule / Telegram message.
+2. **AI Agent** — any chat model, configured to use the MCP tool node.
+3. **MCP Tool** — points at Computer Use. Gives the agent bash, file I/O, browser, skills.
+4. **Post-process** — forward artifacts to email / Slack / DB.
+
+Per-execution `X-Chat-Id` = per-run sandbox. For long-lived agents, reuse a chat id across runs so the sandbox's state persists.
+
+## Caveat: managed Yambr
+
+Managed Yambr does not expose a public MCP endpoint. For n8n + managed Yambr, use the **OpenAI-compatible** chat completions at `api.yambr.com` (not the MCP Tool node) — the gateway includes Computer Use tools in every tool-capable model call. See [Yambr LiteLLM gateway](/platform/litellm).
+
+For direct MCP, self-host the Computer Use Server.
+
+## Headers reference
+
+| Header | Required | Purpose |
+|---|---|---|
+| `Authorization` | If `MCP_API_KEY` is set | `Bearer <token>` |
+| `X-Chat-Id` | Yes | One sandbox per id |
+| `X-User-Email` | No | Per-user skills |
+| `X-MCP-Servers` | No | Comma-separated MCP servers passed to `sub_agent` |
+
+## Related
+
+- [MCP API reference](/api-reference/introduction)
+- [Self-hosting quickstart](/install/quickstart)

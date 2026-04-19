@@ -1,0 +1,136 @@
+---
+title: "Open WebUI"
+description: "The primary tested frontend — how the tool, filter, and patches fit together, and four traps when embedding Open WebUI in your own stack."
+---
+
+[Open WebUI](https://github.com/open-webui/open-webui) is the primary tested frontend for Computer Use. Managed Yambr runs it at [chat.yambr.com](https://chat.yambr.com/). Self-hosters run it from `docker-compose.webui.yml`.
+
+**Compatibility:** Tested with Open WebUI v0.8.11–0.8.12. Set `OPENWEBUI_VERSION` in `.env` to pin.
+
+**Not a fork.** Everything is bolted on via the official plugin API (tools + functions) + build-time patches for missing features. Stock Open WebUI v0.8.11–0.8.12 works if you install the tool and filter. Patches are applied at Docker build time — **strongly recommended**; 4 of them affect user-visible UX.
+
+## What's installed
+
+The `openwebui/` directory contains:
+
+| Component | What it does | Required? |
+|---|---|---|
+| `tools/computer_use_tools.py` | MCP client tool — thin proxy to the Computer Use Server | Yes |
+| `functions/computer_link_filter.py` | System-prompt injector + file-link rewriter + archive button | Yes |
+| `patches/` | Build-time fixes for artifacts, error handling, file preview, large tool results | Strongly recommended |
+| `init.sh` | Auto-installs tool + filter on first startup | Optional — manual Workspace UI works too |
+| `Dockerfile` | Builds a patched Open WebUI image with auto-init | Optional |
+
+## Auto-init (bundled compose)
+
+On first `docker compose -f docker-compose.webui.yml up`, the init script:
+
+1. Creates an admin user (`ADMIN_EMAIL` / `ADMIN_PASSWORD`).
+2. Installs the Computer Use tool via `POST /api/v1/tools/create`.
+3. Installs the filter via `POST /api/v1/functions/create`.
+4. Configures both Valves: `ORCHESTRATOR_URL=http://computer-use-server:8081` (internal, server↔server).
+5. Marks the tool **public-read** (grants for both `group:*` and `user:*`) so non-admin users see it.
+6. Marks the filter **active and global** (two separate toggles — active-but-not-global silently does nothing).
+7. Merges `{function_calling: "native", stream_response: true}` into `DEFAULT_MODEL_PARAMS`.
+
+A marker file (`.computer-use-initialized`) prevents re-running.
+
+## Manual setup (standalone Open WebUI)
+
+1. **Workspace → Tools → Create** → paste `openwebui/tools/computer_use_tools.py`.
+2. Set **Tool ID** = `ai_computer_use` (the filter looks for this).
+3. Configure Valves: `ORCHESTRATOR_URL` = internal URL of the Computer Use Server.
+4. Open the tool's **⋯ → Share** → set access to **Public** (grants read to both `group:*` and `user:*`).
+5. **Workspace → Functions → Create** → paste `openwebui/functions/computer_link_filter.py`.
+6. Toggle the function **Active** *and* **Global** (two separate switches).
+7. In model settings, set **Function Calling = Native** and **Stream Chat Response = On** — or globally in **Admin → Settings → Models → Advanced Params**.
+
+## Four traps when embedding Open WebUI in your own stack
+
+If you run Open WebUI outside the stock compose file — downstream compose, Kubernetes, Portainer — four things silently break Computer Use. In order.
+
+### 1. Build from `openwebui/Dockerfile`, don't pull upstream
+
+Pulling `ghcr.io/open-webui/open-webui:vX.Y.Z` gives you a stock image **without** the patches:
+
+| Patch | Without it |
+|---|---|
+| `fix_artifacts_auto_show` | HTML/iframe renders as raw text instead of the artifacts panel |
+| `fix_preview_url_detection` | Preview iframe never auto-inserts after file links |
+| `fix_tool_loop_errors` | Raw exceptions instead of banners |
+| `fix_large_tool_results` | `TOOL_RESULT_MAX_CHARS` doesn't truncate; large outputs wreck context |
+
+Use `build:` mirroring `docker-compose.webui.yml:11-15`:
+
+```yaml
+services:
+  open-webui:
+    build:
+      context: ./openwebui
+      dockerfile: Dockerfile
+      args:
+        OPENWEBUI_VERSION: "0.8.12"
+        COMPUTER_USE_SERVER_URL: "cu.your-domain.com"
+    image: open-webui-with-cu-patches:latest
+```
+
+Verify patches are in the running container:
+
+```bash
+docker exec open-webui bash -c \
+  'grep -l "bn.set(!0),Jr.set(!0)" /app/build/_app/immutable/chunks/*.js >/dev/null \
+   && echo "patches applied" || echo "MISSING — stock upstream image"'
+```
+
+### 2. `COMPUTER_USE_SERVER_URL` must be the PUBLIC domain
+
+This is the confusing one. `COMPUTER_USE_SERVER_URL` is a **build argument** — not a network endpoint. It's compiled into a regex inside the minified Svelte chunks by `fix_preview_url_detection`. The regex matches `{COMPUTER_USE_SERVER_URL}/(files|preview)/...` in assistant messages.
+
+The model writes whatever URL the server injected into the system prompt — the server's `PUBLIC_BASE_URL` — which is your **public** domain. So the regex must match that.
+
+| Environment | Correct value |
+|---|---|
+| Production | `cu.your-domain.com` (no scheme — regex wraps it) |
+| Local dev | `localhost:8081` |
+
+Change after build = **rebuild the image** (`--build`). The value is compiled in, not read at runtime.
+
+### 3. Three URL settings, two roles
+
+v4.0.0 simplified the old "three `FILE_SERVER_URL` places" footgun. **Three places, two roles** — public (browser-reachable) vs internal (Docker-local):
+
+| Where | Role | Prod | Local |
+|---|---|---|---|
+| `PUBLIC_BASE_URL` on `computer-use-server` | **PUBLIC** — baked into `/system-prompt` + returned via `X-Public-Base-URL` header | `https://cu.your-domain.com` | `http://localhost:8081` |
+| Build-arg `COMPUTER_USE_SERVER_URL` | **PUBLIC** — compiled into Svelte regex | `cu.your-domain.com` (no scheme) | `localhost:8081` |
+| Valves `ORCHESTRATOR_URL` | **INTERNAL** — server↔server fetch | `http://computer-use-server:8081` | `http://computer-use-server:8081` |
+
+<Warning>
+**Do NOT point `ORCHESTRATOR_URL` at your public domain.** It works but every MCP request then goes browser → CDN → Traefik → container, and any hiccup in that chain kills the stream with `MCP call failed: Session terminated`. Stay inside the Docker network.
+
+**Do NOT set the build-arg to the internal service name.** The regex will look for `computer-use-server:8081/files/...` but the model writes the public domain.
+</Warning>
+
+### 4. Four env vars on the `open-webui` container
+
+```yaml
+services:
+  open-webui:
+    environment:
+      - CHAT_RESPONSE_MAX_TOOL_CALL_RETRIES=200
+      - TOOL_RESULT_MAX_CHARS=50000
+      - TOOL_RESULT_PREVIEW_CHARS=2000
+      - ORCHESTRATOR_URL=http://computer-use-server:8081
+```
+
+| Var | Default | Effect |
+|---|---|---|
+| `CHAT_RESPONSE_MAX_TOOL_CALL_RETRIES` | `30` (upstream) | 30 truncates Computer Use multi-step tasks; use `200`. |
+| `TOOL_RESULT_MAX_CHARS` | `50000` | Truncation threshold above which results are truncated/uploaded. |
+| `TOOL_RESULT_PREVIEW_CHARS` | `2000` | Preview size after truncation/upload. |
+| `ORCHESTRATOR_URL` | _(empty)_ | Seeded into both Valves; consumed by `fix_large_tool_results`. Empty = oversized results silently truncate. |
+
+## Related
+
+- [Open WebUI filter reference](/integrations/open-webui-filter)
+- [Claude Code gateway](/install/configuration#gateway-deploy-routing-claude-through-a-proxy) — routing Claude Code through LiteLLM

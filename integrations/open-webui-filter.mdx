@@ -1,0 +1,90 @@
+---
+title: "Open WebUI filter"
+description: "The single integration point between Open WebUI and the Computer Use Server — Valves, preview modes, troubleshooting."
+---
+
+The Computer Use Filter (`openwebui/functions/computer_link_filter.py`) is the **only** integration point between Open WebUI and the Computer Use Server. Two jobs:
+
+- **`inlet()`** — when the `ai_computer_use` tool is active, fetch the server-baked system prompt over HTTP and inject it into the conversation.
+- **`outlet()`** — decorate assistant messages that contain sandbox file URLs with a markdown preview link and an archive-download link. On patched Open WebUI builds the preview link auto-promotes to an inline artifact. On stock builds it stays a clickable link — either way the user reaches the preview without a rebuild.
+
+The filter is the single source of truth for the client-side URL shape; the server owns the prompt content and preview rendering.
+
+## Installation
+
+1. Open WebUI → **Admin Panel → Functions → New Function**.
+2. Paste the entire contents of `openwebui/functions/computer_link_filter.py`.
+3. Save; toggle the function **Active** and **Global** for every model.
+4. Override any Valve if needed — defaults work end-to-end as long as the Computer Use Server is reachable at `http://localhost:8081` (or your `ORCHESTRATOR_URL`).
+
+Upstream docs: [Open WebUI Functions](https://docs.openwebui.com/features/plugin/functions/).
+
+## Valves reference
+
+| Name | Type | Default | Purpose |
+|---|---|---|---|
+| `ORCHESTRATOR_URL` | str | `http://computer-use-server:8081` | **Internal** URL for server↔server fetches. Never reaches the browser. Trailing slash tolerated; non-http(s) rejected. |
+| `INJECT_SYSTEM_PROMPT` | bool | `True` | If `False`, `inlet()` skips system-prompt injection — useful when another filter owns the prompt. |
+| `PREVIEW_MODE` | `"button" \| "off"` | `"button"` | Emit the markdown preview link. On patched builds the frontend patch promotes it to an inline artifact; on stock builds it's a clickable link. `off` = no preview link. |
+| `ARCHIVE_BUTTON` | `"on" \| "off"` | `"on"` | Append `[{ARCHIVE_BUTTON_TEXT}]({base}/files/{chat_id}/archive)` to messages containing files. |
+| `PREVIEW_BUTTON_TEXT` | str | `🖥️ Open preview` | Label for the preview link. |
+| `ARCHIVE_BUTTON_TEXT` | str | `📦 Download all files as archive` | Label for the archive link. |
+
+## Two URL roles
+
+v4.0.0 removed the old "two `FILE_SERVER_URL`" footgun. There is now **one public URL owned by the server** (`PUBLIC_BASE_URL`), delivered to the filter via the `X-Public-Base-URL` response header on `/system-prompt`. The filter has no public-URL Valve.
+
+| Role | Where | Notes |
+|---|---|---|
+| **Public** | `PUBLIC_BASE_URL` on the server | Baked into the system prompt; returned via response header. |
+| **Internal** | `ORCHESTRATOR_URL` Valve | Docker-only; the filter uses this to fetch `/system-prompt`. |
+
+See [Open WebUI integration](/integrations/open-webui) for the full embedding checklist.
+
+## How the preview gets rendered
+
+`outlet()` appends a markdown link `[🖥️ Open preview]({PUBLIC_BASE_URL}/preview/{chat_id})` to every assistant message that references a sandbox file.
+
+- **Stock Open WebUI**: link stays a link. User clicks it → preview opens in a new tab.
+- **Patched Open WebUI** (our `docker-compose.webui.yml` build): `fix_preview_url_detection` sees `/preview/{chat_id}` in the message text and pushes a synthetic `<iframe>` into `htmlGroups`. `fix_artifacts_auto_show` then auto-opens the side panel. No click.
+
+<Note>
+**v4.1.0 breaking change.** Earlier versions embedded a raw fenced `<iframe>` block in messages. That was a foot-gun (the patch's `!htmlGroups.some(o=>o.html)` guard skipped detection when the block was present). v4.1.0 uses only the markdown link + the patch. `PREVIEW_MODE="artifact"` and `"both"` were removed — re-seed Valves after upgrading.
+</Note>
+
+## System prompt injection
+
+`INJECT_SYSTEM_PROMPT=True` (default): when the `ai_computer_use` tool is active and `chat_id` is present, the filter HTTP-fetches `{ORCHESTRATOR_URL}/system-prompt` and injects it into the system message. 5-minute LRU cache, stale-cache fallback on transport failure. The `X-Public-Base-URL` response header is cached alongside the prompt so `outlet()` can build browser-facing links without its own Valve.
+
+Non-http(s) schemes on `ORCHESTRATOR_URL` are rejected to block `file://` / `ftp://` information-disclosure paths.
+
+## Archive button
+
+`ARCHIVE_BUTTON="on"` (default): when an assistant message contains at least one URL matching `{PUBLIC_BASE_URL}/files/{chat_id}/...`, `outlet()` appends a markdown link to `/files/{chat_id}/archive`. The endpoint streams a zip of every file the sandbox has written for the chat. The append is idempotent — safe to re-run `outlet()` on the same body.
+
+## Troubleshooting
+
+**Preview shows "connection refused" or a blank frame**
+
+- `PUBLIC_BASE_URL` must be reachable **from the user's browser**. No Valve for this — flows from server env.
+- `docker compose ps` — is `computer-use-server` healthy?
+- `curl` the iframe's `src=` directly — SPA HTML should come back as HTTP 200.
+
+**Preview link or archive button never appears**
+
+- The assistant message must contain at least one URL matching `{PUBLIC_BASE_URL}/files/{chat_id}/...` (or a `<details type="tool_calls">` block referencing a browser tool). No trigger, no decoration.
+- `chat_id` must reach `outlet()` via `__metadata__`. Restart Open WebUI after toggling Valves if the model didn't re-init.
+- `PREVIEW_MODE="button"` OR `ARCHIVE_BUTTON="on"`. Both `off` = `outlet()` returns body unchanged.
+
+**Preview opens in a new tab instead of the artifact panel**
+
+You're on stock Open WebUI — the markdown link stays a link. Apply the patches (use `docker-compose.webui.yml`), or live with the click.
+
+**"Non-http scheme" error in logs**
+
+`ORCHESTRATOR_URL` is set to `file://` / `ftp://`. Fix by pointing at `http://` or `https://`.
+
+## See also
+
+- [System prompt reference](/reference/system-prompt) — six MCP-native tiers
+- [Open WebUI integration](/integrations/open-webui) — embedding checklist

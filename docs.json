@@ -1,13 +1,13 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Yambr",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#65A30D",
+    "light": "#A3E635",
+    "dark": "#3F6212"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.png",
   "navigation": {
     "tabs": [
       {
@@ -18,31 +18,69 @@
             "pages": [
               "index",
               "quickstart",
-              "development"
+              "introduction",
+              "architecture"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Yambr Platform",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "platform/overview",
+              "platform/api-keys",
+              "platform/litellm",
+              "platform/hosted-chat",
+              "platform/cu-endpoint"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Self-hosting",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "install/requirements",
+              "install/quickstart",
+              "install/configuration",
+              "install/docker",
+              "install/model-settings"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Features",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "features/browser",
+              "features/terminal",
+              "features/code-execution",
+              "features/sub-agents",
+              "features/file-preview"
+            ]
+          },
+          {
+            "group": "Skills",
+            "pages": [
+              "skills/overview",
+              "skills/user-guide",
+              "skills/reference",
+              "skills/dynamic",
+              "skills/creating"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/open-webui",
+              "integrations/open-webui-filter",
+              "integrations/claude-desktop",
+              "integrations/litellm",
+              "integrations/n8n",
+              "integrations/custom"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/comparison",
+              "reference/system-prompt",
+              "reference/known-bugs",
+              "reference/changelog",
+              "reference/contributing"
             ]
           }
         ]
@@ -51,18 +89,19 @@
         "tab": "API reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
-              "api-reference/introduction"
+              "api-reference/introduction",
+              "api-reference/system-prompt-endpoint"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "MCP methods",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/mcp/initialize",
+              "api-reference/mcp/tools-list",
+              "api-reference/mcp/tools-call",
+              "api-reference/mcp/resources"
             ]
           }
         ]
@@ -71,52 +110,53 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "Try on chat.yambr.com",
+          "href": "https://chat.yambr.com/",
+          "icon": "comments"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Get API key",
+          "href": "https://app.yambr.com/",
+          "icon": "key"
+        },
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/Yambr/open-computer-use",
+          "icon": "github"
+        },
+        {
+          "anchor": "Telegram",
+          "href": "https://t.me/yambrcom",
+          "icon": "telegram"
         }
       ]
     }
   },
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "/logo/yambr.png",
+    "dark": "/logo/yambr.png"
   },
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "GitHub",
+        "href": "https://github.com/Yambr/open-computer-use"
+      },
+      {
+        "label": "Telegram",
+        "href": "https://t.me/yambrcom"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "href": "https://app.yambr.com/"
     }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/Yambr/open-computer-use",
+      "telegram": "https://t.me/yambrcom"
     }
   }
 }

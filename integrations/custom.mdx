@@ -1,0 +1,107 @@
+---
+title: "Custom MCP clients"
+description: "Talk to the Computer Use Server from any HTTP client that speaks MCP JSON-RPC."
+---
+
+The server speaks standard **MCP over Streamable HTTP**. Any HTTP client can drive it; you just need to handle the JSON-RPC envelope, session id, and SSE framing.
+
+## Initialize
+
+```bash
+curl -sD - -X POST "http://localhost:8081/mcp" \
+  -H "Authorization: Bearer $MCP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "X-Chat-Id: my-session" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": {"name": "my-client", "version": "1.0"}
+    }
+  }'
+```
+
+Save the `Mcp-Session-Id` response header — you'll pass it on every subsequent call.
+
+## List tools
+
+```bash
+curl -s -X POST "http://localhost:8081/mcp" \
+  -H "Authorization: Bearer $MCP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: $SESSION_ID" \
+  -H "X-Chat-Id: my-session" \
+  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}'
+```
+
+## Call a tool
+
+```bash
+curl -s -X POST "http://localhost:8081/mcp" \
+  -H "Authorization: Bearer $MCP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: $SESSION_ID" \
+  -H "X-Chat-Id: my-session" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {
+      "name": "bash_tool",
+      "arguments": {"command": "echo Hello", "description": "test"}
+    }
+  }'
+```
+
+## List / read resources
+
+Uploaded files show up as `resources/list` entries with URIs of the form `file://uploads/{chat_id}/{encoded-rel-path}`. See [MCP methods → resources](/api-reference/mcp/resources).
+
+## Dynamic system prompt
+
+Non-MCP clients can fetch the per-session system prompt over plain HTTP:
+
+```bash
+curl "http://localhost:8081/system-prompt?chat_id=my-session&user_email=user@example.com"
+```
+
+Stream it into the model's system message. The response carries an `X-Public-Base-URL` header with the server's public URL — use that when rewriting file links.
+
+## Python example (mcp SDK)
+
+```python
+from mcp import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
+
+async def main():
+    async with streamablehttp_client(
+        url="http://localhost:8081/mcp",
+        headers={
+            "Authorization": "Bearer " + MCP_API_KEY,
+            "X-Chat-Id": "my-session",
+        },
+    ) as (read, write, _):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+            result = await session.call_tool(
+                "bash_tool",
+                {"command": "echo Hello", "description": "test"},
+            )
+            print(result)
+```
+
+## Managed Yambr
+
+For managed Yambr, the raw MCP endpoint isn't public — go through [api.yambr.com](/platform/litellm) instead. Any OpenAI-compatible tool-enabled chat completion on that endpoint has Computer Use tools available automatically.
+
+## See also
+
+- [MCP API reference](/api-reference/introduction) — tool list, headers, dynamic endpoints
+- [System prompt](/reference/system-prompt) — six MCP-native tiers

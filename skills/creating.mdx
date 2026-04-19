@@ -1,0 +1,93 @@
+---
+title: "Creating skills"
+description: "Folder layout, SKILL.md format, and how to publish skills to the registry."
+---
+
+The fastest way to author a skill is to use the bundled `skill-creator` skill from Claude Code inside a sandbox terminal. It walks you through the folder layout, writes a well-formed `SKILL.md`, scaffolds scripts, and tests it end-to-end.
+
+## Folder layout
+
+```
+my-skill/
+├── SKILL.md          # Required — what the AI reads
+├── scripts/          # Optional — runnable helpers
+│   └── process.py
+└── references/       # Optional — longer-form docs
+    └── guide.md
+```
+
+## `SKILL.md`
+
+Frontmatter + prose instructions:
+
+```markdown
+---
+name: my-skill
+description: Brief one-line description — this is what the AI sees in <available_skills>
+---
+
+# My Skill
+
+## When to use
+Describe the task signal that should make the AI reach for this skill.
+
+## Workflow
+1. ...
+2. ...
+
+## Scripts
+- `scripts/process.py` — what it does, how to call it.
+
+## Output format
+Be explicit about where files should land and what shape the user expects.
+```
+
+<Tip>
+Keep `SKILL.md` short. The AI reads it once per invocation — walls of text eat context. Use `references/` for long docs, and tell the AI in `SKILL.md` when to consult them.
+</Tip>
+
+## Scripts
+
+Scripts live under `scripts/` and are invoked via `bash_tool`. Typical shape:
+
+```python
+# scripts/process.py
+import argparse, sys, json
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--input", required=True)
+    ap.add_argument("--output", required=True)
+    args = ap.parse_args()
+    # ...
+    print(json.dumps({"ok": True, "path": args.output}))
+
+if __name__ == "__main__":
+    main()
+```
+
+Design for unix: one job, parseable output, non-zero exit on failure.
+
+## Testing
+
+1. Drop your skill into `/mnt/skills/public/my-skill/` inside a sandbox (bind-mount or temporary copy).
+2. Start a fresh chat.
+3. Ask for the thing — the AI should pick the skill automatically.
+4. Iterate on `SKILL.md` if the AI keeps reaching for the wrong tool.
+
+## Publishing
+
+### Managed Yambr
+
+Custom skills are stored in the Settings Wrapper registry. Zip your skill, upload it via the dashboard (or let the AI do it via the `settings-manager` skill), and it becomes available on your account.
+
+### Self-hosted
+
+- **Bake into the image.** Drop the folder under `skills/public/my-skill/` in your fork of the repo and rebuild. Everyone on that deployment gets it.
+- **Bind-mount at runtime.** Use the Settings Wrapper's ZIP-upload flow, or mount a host directory into `/mnt/skills/user/my-skill/`.
+
+## Related
+
+- [skill-creator reference](/skills/reference) — the meta-skill itself
+- [Dynamic skills](/skills/dynamic) — how user skills get mounted
+- [Settings Wrapper](https://github.com/Yambr/open-computer-use/tree/main/settings-wrapper) — mock registry + API contract

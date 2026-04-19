@@ -1,0 +1,122 @@
+---
+title: "tools/list"
+description: "Enumerate the five MCP tools the server exposes, with their input schemas."
+---
+
+## Request
+
+```bash
+curl -s -X POST "http://localhost:8081/mcp" \
+  -H "Authorization: Bearer $MCP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: $SESSION_ID" \
+  -H "X-Chat-Id: my-session" \
+  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}'
+```
+
+## Response shape
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "tools": [
+      {
+        "name": "bash_tool",
+        "description": "Execute bash commands in the sandbox. ...",
+        "inputSchema": { "type": "object", "properties": {...}, "required": [...] }
+      },
+      {
+        "name": "view",
+        "description": "View files and directories. ...",
+        "inputSchema": {...}
+      },
+      {
+        "name": "create_file",
+        "description": "Create files with auto-parent-directory creation. ...",
+        "inputSchema": {...}
+      },
+      {
+        "name": "str_replace",
+        "description": "Edit files via find-and-replace with uniqueness validation. ...",
+        "inputSchema": {...}
+      },
+      {
+        "name": "sub_agent",
+        "description": "Delegate a task to an autonomous Claude Code agent. ...",
+        "inputSchema": {...}
+      }
+    ]
+  }
+}
+```
+
+## Tools
+
+### `bash_tool`
+
+Run arbitrary shell commands inside the sandbox. Streams stdout/stderr with 15-second heartbeats, caps output at 30K chars (first 15K + last 15K), handles semantic exit codes (grep returning 1 is "no match", not an error). Timeout: `COMMAND_TIMEOUT` (default 120s).
+
+**Arguments**
+
+| Name | Type | Required | Purpose |
+|---|---|---|---|
+| `command` | string | Yes | Shell command to execute |
+| `description` | string | Yes | One-line description (for logs + UI) |
+| `cwd` | string | No | Working directory inside the sandbox |
+| `timeout` | number | No | Override `COMMAND_TIMEOUT` (s) |
+
+### `view`
+
+Read files and directories. Returns content with line numbers for text; base64 for binaries; an auto-resized thumbnail for images when the MCP transport supports it.
+
+**Arguments**
+
+| Name | Type | Required | Purpose |
+|---|---|---|---|
+| `path` | string | Yes | Absolute path inside the sandbox |
+| `view_range` | `[int, int]` | No | Start/end lines (1-indexed, inclusive) |
+
+### `create_file`
+
+Create a new file. Parent directories are created automatically.
+
+**Arguments**
+
+| Name | Type | Required | Purpose |
+|---|---|---|---|
+| `path` | string | Yes | Absolute path to create |
+| `content` | string | Yes | File contents |
+
+### `str_replace`
+
+Find-and-replace a single occurrence. Fails loudly if `old_str` matches zero or more than one location — forces callers to be specific.
+
+**Arguments**
+
+| Name | Type | Required | Purpose |
+|---|---|---|---|
+| `path` | string | Yes | File to edit |
+| `old_str` | string | Yes | Exact text to find (must be unique) |
+| `new_str` | string | Yes | Replacement text |
+
+### `sub_agent`
+
+Launch Claude Code CLI inside the sandbox as a long-running autonomous agent.
+
+**Arguments**
+
+| Name | Type | Required | Purpose |
+|---|---|---|---|
+| `prompt` | string | Yes | Task description |
+| `model` | `"sonnet" \| "opus" \| "haiku"` | No | Model alias (resolves to `ANTHROPIC_DEFAULT_*_MODEL`) |
+| `resume_session_id` | string | No | Resume a prior Claude Code session |
+| `max_turns` | number | No | Override `SUB_AGENT_MAX_TURNS` |
+
+See [Sub-agents](/features/sub-agents) for the full picture.
+
+## Next
+
+- [tools/call](/api-reference/mcp/tools-call) — invoke a tool.

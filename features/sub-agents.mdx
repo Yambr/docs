@@ -1,0 +1,56 @@
+---
+title: "Sub-agents (Claude Code)"
+description: "Delegate complex multi-step tasks to Claude Code running autonomously inside the sandbox."
+---
+
+<Frame>
+  <img src="/images/screenshots/06-sub-agent-dashboard.png" alt="Sub-agent dashboard monitoring Claude Code processes" />
+</Frame>
+
+The `sub_agent` tool launches **Claude Code CLI** inside the sandbox as a long-running autonomous process. The main chat model delegates a task description; Claude Code executes for up to `SUB_AGENT_TIMEOUT` seconds and returns a summary.
+
+## Why delegate
+
+Some tasks need many sequential steps — refactor a repo, run tests, fix failures, iterate. Doing that through the main chat model means dozens of tool-call round trips and huge context. Claude Code runs them locally in the sandbox with its own short-loop agent, just reports back.
+
+## How it works
+
+1. Main model calls `sub_agent(prompt, model="sonnet", ...)`.
+2. Server launches `claude` CLI inside the sandbox in a named tmux session.
+3. Claude Code reads `~/.mcp.json` (auto-generated) and connects to configured MCP servers.
+4. Runs autonomously — bash, file edits, git operations, tests.
+5. Returns a final summary to the main model.
+6. User can attach to the tmux session from the Terminal tab to watch or take over.
+
+## Model selection
+
+Pass `model="sonnet" | "opus" | "haiku"` — the CLI looks up `ANTHROPIC_DEFAULT_SONNET_MODEL` / `_OPUS_MODEL` / `_HAIKU_MODEL` env vars. Good for routing through LiteLLM/Azure/Bedrock — see [Claude Code gateway](/install/configuration#gateway-deploy-routing-claude-through-a-proxy).
+
+## MCP servers auto-config
+
+When you call `sub_agent`, the server writes `~/.mcp.json` inside the sandbox from the `X-MCP-Servers` HTTP header:
+
+```
+X-MCP-Servers: github,jira,slack
+```
+
+URLs are templated as `{ANTHROPIC_BASE_URL}/mcp/{server_name}` (LiteLLM MCP proxy pattern). Auth tokens are resolved at runtime — never stored in the config file. Claude Code auto-approves these servers so it doesn't prompt mid-run.
+
+## Session resume
+
+If `sub_agent` hits its timeout but Claude Code is still running, the model gets a timeout message but the tmux session stays alive. The user sees it in the Sub-Agent tab and can:
+
+- Watch until it finishes and ask the model to process the final state.
+- Take over in the terminal.
+- Kill the process from the dashboard.
+
+## Security notes
+
+- The server name `docker_ai` / `docker-ai` is blocked to prevent recursive sub-agent loops.
+- Auth tokens aren't stored in `~/.mcp.json` — resolved from container env at request time.
+- Auto-approve is scoped to the configured servers only.
+
+## Related
+
+- [Terminal tab](/features/terminal)
+- [MCP method: tools/call](/api-reference/mcp/tools-call) — invoke sub_agent directly

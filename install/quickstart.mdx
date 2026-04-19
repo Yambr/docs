@@ -1,0 +1,117 @@
+---
+title: "Self-host quickstart"
+description: "Clone the repo, copy .env.example, run two docker compose commands, open localhost:3000."
+---
+
+## 0. Prerequisites
+
+Docker 24.0+ with Compose v2. See [Requirements](/install/requirements) for hardware.
+
+## 1. Clone and configure
+
+```bash
+git clone https://github.com/Yambr/open-computer-use.git
+cd open-computer-use
+cp .env.example .env
+```
+
+Open `.env` and set at minimum:
+
+```bash
+# Admin account created on first Open WebUI startup
+ADMIN_EMAIL=you@example.com
+ADMIN_PASSWORD=change-me
+
+# Open WebUI session signing key — generate a fresh one
+WEBUI_SECRET_KEY=...  # openssl rand -hex 32
+
+# Browser-reachable URL of the Computer Use Server
+PUBLIC_BASE_URL=http://localhost:8081
+
+# LLM provider (any OpenAI-compatible)
+OPENAI_API_KEY=sk-...
+# OPENAI_API_BASE_URL=https://openrouter.ai/api/v1  # optional
+
+# PostgreSQL password
+POSTGRES_PASSWORD=change-me
+```
+
+Full reference: [Configuration](/install/configuration).
+
+## 2. Start the Computer Use Server
+
+```bash
+docker compose up --build
+```
+
+The first build downloads tooling and assembles the workspace image (~15 min on a decent connection). Subsequent starts take seconds.
+
+When you see `Uvicorn running on http://0.0.0.0:8081`, the orchestrator is live.
+
+Smoke test in another terminal:
+
+```bash
+curl http://localhost:8081/mcp-info
+```
+
+## 3. Start Open WebUI
+
+In a second terminal:
+
+```bash
+docker compose -f docker-compose.webui.yml up --build
+```
+
+The init script auto-installs the Computer Use tool + filter, creates your admin user, and sets `function_calling: native` + `stream_response: true` as the default model params.
+
+Open [http://localhost:3000](http://localhost:3000) and sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
+
+## 4. Add a model
+
+1. Go to **Admin → Settings → Connections** and add your LLM provider (the same `OPENAI_API_KEY` you set in `.env`, or a separate dedicated key).
+2. Go to **Workspace → Models** and enable at least one model.
+3. Verify **Function Calling = Native** and **Stream Chat Response = On** — set globally in **Admin → Settings → Models → Advanced Params** if you want these to be the default for every model.
+
+<Tip>
+If tool calls silently don't fire, 99% of the time it's because Function Calling is set to `Default` instead of `Native`. See [Model settings](/install/model-settings).
+</Tip>
+
+## 5. Chat
+
+Start a new chat and ask for something tool-worthy:
+
+> *"Create a professional cover letter for a Senior Software Engineer applying to a startup in .docx, three paragraphs."*
+
+You should see:
+
+- The model picks the `docx` skill.
+- `bash_tool` and `create_file` calls execute inside a fresh sandbox container.
+- A file link appears. A preview iframe auto-inserts below it.
+
+If any of that fails, check [Known bugs](/reference/known-bugs) and [Open WebUI integration traps](/integrations/open-webui).
+
+## Two compose files, on purpose
+
+| File | What it runs | Talks to |
+|---|---|---|
+| `docker-compose.yml` | Computer Use Server (`computer-use-server:8081`) | Docker socket, per-chat sandboxes |
+| `docker-compose.webui.yml` | Open WebUI | `computer-use-server:8081` over the shared Docker network |
+
+They're split so the MCP server and the UI can run on different hosts in production — the split matches how real deployments look. Both files attach to the same external network (`computer-use-net`) that the server creates on first `up`.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/install/configuration">
+    Full env var reference.
+  </Card>
+  <Card title="Docker details" icon="docker" href="/install/docker">
+    Why the server needs the Docker socket, resource limits, image layout.
+  </Card>
+  <Card title="Model settings" icon="sliders" href="/install/model-settings">
+    Why Function Calling = Native and streaming matter.
+  </Card>
+  <Card title="Open WebUI traps" icon="triangle-exclamation" href="/integrations/open-webui">
+    Four things that silently break Computer Use in custom deployments.
+  </Card>
+</CardGroup>

@@ -1,0 +1,67 @@
+---
+title: "initialize"
+description: "Open an MCP session — negotiate the protocol version and capabilities, receive the per-chat system prompt."
+---
+
+The first call on every session. Returns `Mcp-Session-Id` in the response headers — include it on all subsequent calls.
+
+## Request
+
+```bash
+curl -sD - -X POST "http://localhost:8081/mcp" \
+  -H "Authorization: Bearer $MCP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "X-Chat-Id: my-session" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": {"name": "my-client", "version": "1.0"}
+    }
+  }'
+```
+
+## Response
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {
+      "tools": {},
+      "resources": {}
+    },
+    "serverInfo": {"name": "open-computer-use", "version": "..."},
+    "instructions": "<the per-chat system prompt>"
+  }
+}
+```
+
+Important response header: `Mcp-Session-Id: <uuid>` — store and echo on every follow-up call.
+
+## `instructions`
+
+`result.instructions` is the per-chat system prompt, rendered fresh from `X-Chat-Id` + `X-User-Email`. It's Tier 4 of the [six system-prompt tiers](/reference/system-prompt) and reaches clients that natively surface `InitializeResult.instructions` (Claude Desktop, MCP Inspector, OpenAI Agents SDK).
+
+<Note>
+LiteLLM is a tool-call proxy and does not forward `instructions` to the LLM. If you're running Computer Use through LiteLLM, consume the prompt via `GET /system-prompt` instead — or via the Open WebUI filter, which does the HTTP fetch and injects the prompt into the system message for you.
+</Note>
+
+## Errors
+
+| Status | Cause |
+|---|---|
+| `401 Unauthorized` | Missing or wrong `Authorization` when `MCP_API_KEY` is set |
+| `400 Bad Request` | Missing `X-Chat-Id` with `SINGLE_USER_MODE=false` |
+| `415 Unsupported Media Type` | Wrong `Accept` header — include `application/json, text/event-stream` |
+
+## Next
+
+- [tools/list](/api-reference/mcp/tools-list) — enumerate available tools.
+- [resources/list](/api-reference/mcp/resources) — browse uploaded files.

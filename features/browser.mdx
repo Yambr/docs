@@ -1,0 +1,47 @@
+---
+title: "Live browser"
+description: "Each sandbox runs Chromium with CDP exposed — you and the model drive the same browser in real time."
+---
+
+<Frame>
+  <img src="/images/screenshots/03-browser-viewer.png" alt="Live CDP browser viewer in Open WebUI" />
+</Frame>
+
+## What it is
+
+Each sandbox container runs Chromium with the **Chrome DevTools Protocol** exposed. Open WebUI's Browser tab bridges CDP over a WebSocket, so the user sees exactly what the model is doing and can click through if needed. Not a screenshot relay — a **shared, interactive browser**.
+
+## How the model uses it
+
+The `playwright-cli` skill wraps Playwright with high-level helpers: navigate, fill forms, click, screenshot, extract content. The model chooses when to use Playwright vs. when to ask for human action.
+
+## How the user uses it
+
+Open the **Browser** tab in the chat's side panel. You're looking at the same Chromium the model is driving. You can:
+
+- **Watch** — every navigation, click, form fill happens live.
+- **Take over** — click, type, scroll. Useful for logins, 2FA codes, CAPTCHAs — the model never sees your raw credentials, only the resulting page state.
+- **Leave the AI in charge** — the model picks up from wherever you left the page.
+
+<Frame>
+  <img src="/images/diagrams/shared-browser.svg" alt="Shared browser architecture" />
+</Frame>
+
+## Why a shared browser matters
+
+Non-technical users get stuck at exactly the wrong moments: login walls, Cloudflare, banking 2FA. Shared browser means the user handles the human-in-the-loop step and the model continues — no need for a new skill every time a site adds a challenge.
+
+## Endpoints (self-hosted)
+
+```
+GET  /browser/{chat_id}/status
+GET  /browser/{chat_id}/json
+WS   /browser/{chat_id}/devtools/page/{page_id}
+```
+
+On managed Yambr, Open WebUI uses a session-scoped token before opening the WebSocket — there is no public unauthenticated access.
+
+## Related
+
+- [Playwright skill](/skills/reference#playwright-cli)
+- [Sub-agents](/features/sub-agents) — Claude Code can drive the browser too

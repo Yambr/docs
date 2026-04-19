@@ -1,0 +1,127 @@
+---
+title: "LiteLLM gateway"
+description: "Use api.yambr.com as an OpenAI-compatible endpoint with Computer Use tools routed into every request."
+---
+
+[api.yambr.com](https://api.yambr.com) is a [LiteLLM](https://github.com/BerriAI/litellm) proxy that fronts every model Yambr supports (OpenAI, Anthropic, Google, open-weights, ...) **and** the Computer Use MCP tools. One endpoint, one API key, any model.
+
+## Base URL
+
+```
+https://api.yambr.com
+```
+
+Standard OpenAI-compatible paths: `/chat/completions`, `/completions`, `/embeddings`, `/models`, ...
+
+## Calling models
+
+<CodeGroup>
+
+```python Python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="sk-yambr-...",
+    base_url="https://api.yambr.com",
+)
+
+resp = client.chat.completions.create(
+    model="claude-sonnet-4-6",
+    messages=[{"role": "user", "content": "Hello"}],
+)
+print(resp.choices[0].message.content)
+```
+
+```javascript Node
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: "sk-yambr-...",
+  baseURL: "https://api.yambr.com",
+});
+
+const resp = await client.chat.completions.create({
+  model: "claude-sonnet-4-6",
+  messages: [{ role: "user", content: "Hello" }],
+});
+console.log(resp.choices[0].message.content);
+```
+
+```bash cURL
+curl https://api.yambr.com/chat/completions \
+  -H "Authorization: Bearer sk-yambr-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-6",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+</CodeGroup>
+
+## Listing models
+
+```bash
+curl https://api.yambr.com/models \
+  -H "Authorization: Bearer sk-yambr-..."
+```
+
+The exact set of models enabled on your key is shown in the dashboard.
+
+## Invoking Computer Use
+
+Computer Use tools (`bash_tool`, `view`, `create_file`, `str_replace`, `sub_agent`) are exposed as **MCP tools** proxied through the gateway. There are two common patterns:
+
+### A. Let the gateway handle tool calls end-to-end
+
+Enable the Computer Use MCP server in your LiteLLM team/key settings from the dashboard. Then your normal `chat.completions.create` call gets access to the tools automatically — you pass a session identifier and LiteLLM forwards tool calls to `cu.yambr.com` on your behalf.
+
+```python
+resp = client.chat.completions.create(
+    model="claude-sonnet-4-6",
+    messages=[{"role": "user", "content": "Create a one-page site about coffee"}],
+    extra_headers={
+        "x-chat-id": "user-42-session-abc",      # one sandbox per chat id
+        "x-user-email": "user@example.com",       # for per-user skills & PATs
+    },
+)
+```
+
+The `x-chat-id` header maps to a dedicated Docker sandbox. Same id across turns = same sandbox (state persists). New id = fresh sandbox.
+
+### B. Use your own MCP client
+
+If you're building a custom agent loop, connect directly to the MCP endpoint proxied through LiteLLM — see the [MCP API reference](/api-reference/introduction). The URL shape is the standard MCP-over-Streamable-HTTP endpoint; the bearer token is your Yambr API key.
+
+<Note>
+There is **no** public `https://cu.yambr.com/mcp` endpoint you can call directly — all traffic must come through the LiteLLM gateway. See [cu.yambr.com](/platform/cu-endpoint).
+</Note>
+
+## Streaming
+
+Set `stream: true` as usual. The gateway preserves SSE streaming end-to-end, including tool call deltas.
+
+```python
+stream = client.chat.completions.create(
+    model="claude-sonnet-4-6",
+    messages=[{"role": "user", "content": "Write a haiku"}],
+    stream=True,
+)
+for chunk in stream:
+    print(chunk.choices[0].delta.content or "", end="")
+```
+
+## Troubleshooting
+
+| Symptom | Likely cause |
+|---|---|
+| `401 Unauthorized` | Key is wrong, revoked, or missing the `Bearer ` prefix. |
+| `429 Too Many Requests` | Hit rate limit — check the dashboard, or use a different model. |
+| `x-chat-id` ignored, no tools fire | Your client isn't enabling the Computer Use MCP server on this key. Toggle it in the dashboard. |
+| Previews show as raw text in Open WebUI | Using stock `ghcr.io/open-webui/open-webui` — patches aren't applied. Managed Yambr uses the patched image already; if you're self-hosting, see [Self-hosting Open WebUI](/integrations/open-webui). |
+
+## Related
+
+- [API keys](/platform/api-keys) — create and manage keys
+- [cu.yambr.com](/platform/cu-endpoint) — what the `cu` subdomain is and isn't
+- [MCP API reference](/api-reference/introduction) — raw tool calls

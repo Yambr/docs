@@ -1,0 +1,40 @@
+---
+title: "Contributing"
+description: "How to contribute to Open Computer Use."
+---
+
+Open Computer Use is an open-source project. Contributions are welcome — bug reports, PRs, documentation, skills, and integrations.
+
+## Where work happens
+
+- **Code** — [github.com/Yambr/open-computer-use](https://github.com/Yambr/open-computer-use)
+- **Issues** — [GitHub Issues](https://github.com/Yambr/open-computer-use/issues)
+- **Chat** — [Telegram](https://t.me/yambrcom)
+- **Releases** — [GitHub Releases](https://github.com/Yambr/open-computer-use/releases)
+
+## Quick contribution ideas
+
+- **A new skill** — create a `SKILL.md` for a workflow you repeat, submit under `skills/examples/`. See [Creating skills](/skills/creating).
+- **A new integration** — MCP client we don't cover? Write a short guide and land it in `/integrations/`.
+- **Bug fixes for known issues** — see [Known bugs](/reference/known-bugs); each has "likely fix" hints.
+- **Docs** — this site lives at [github.com/yambr/docs](https://github.com/yambr/docs). PRs against Mintlify `.mdx` files are welcome.
+
+## Development setup
+
+See [CONTRIBUTING.md](https://github.com/Yambr/open-computer-use/blob/main/CONTRIBUTING.md) in the repo for the canonical process: local dev loop, test expectations, commit style, and PR template.
+
+Tests live in `tests/` and run against a real Docker daemon — no mocks for the sandbox itself. The CI pipeline on GitHub Actions is the authoritative gate.
+
+## Licensing
+
+The project ships a tri-license:
+
+- **BSL 1.1** — production use by operators running the system themselves; converts to Apache-2.0 on the change date
+- **Apache 2.0** — for patches that get accepted upstream
+- **MIT** — for skills and small utilities that want maximum reuse
+
+See [LICENSE](https://github.com/Yambr/open-computer-use/blob/main/LICENSE), [LICENSE-APACHE](https://github.com/Yambr/open-computer-use/blob/main/LICENSE-APACHE), [LICENSE-MIT](https://github.com/Yambr/open-computer-use/blob/main/LICENSE-MIT), and [NOTICE](https://github.com/Yambr/open-computer-use/blob/main/NOTICE).
+
+## Code of conduct
+
+Be kind, be specific, be patient. We moderate for bad faith, not for language.
