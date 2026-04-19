@@ -1,34 +1,22 @@
 ---
 title: "cu.yambr.com"
-description: "The live MCP endpoint and public file host. Internal-only for MCP traffic; public for artifact URLs."
+description: "Sandbox containers and public artifact URLs. Not an MCP endpoint — the MCP lives on api.yambr.com."
 ---
 
 [cu.yambr.com](https://cu.yambr.com/) is the Yambr-managed Computer Use Server. It does two jobs:
 
-1. **Live MCP endpoint** — the actual Computer Use orchestrator that spawns sandbox containers, proxies tool calls, bridges the CDP browser, and streams the terminal.
+1. **Sandbox host** — runs the per-chat Docker containers, bridges the CDP browser, streams the terminal.
 2. **Public artifact host** — the domain where files created by the model (PDFs, HTML, images, ...) are served so they can be linked and previewed.
 
-## MCP traffic: gateway-only
-
 <Warning>
-**You cannot call `https://cu.yambr.com/mcp` from your code.** The MCP endpoint on `cu.yambr.com` is **not** publicly reachable with a Yambr API key — it's only accessible through the LiteLLM gateway at [api.yambr.com](/platform/litellm).
+**`cu.yambr.com` is not the MCP endpoint.** The public MCP endpoint is `https://api.yambr.com/mcp/computer_use`. Calls to `https://cu.yambr.com/mcp` are **not** publicly reachable.
 </Warning>
 
-All Computer Use tool calls must flow through `api.yambr.com`, which:
+## How to reach the MCP tools
 
-- Authenticates your Yambr API key.
-- Picks the right sandbox by `x-chat-id`.
-- Forwards the MCP JSON-RPC payload to `cu.yambr.com` internally.
-- Streams the response back to you.
+All Computer Use tool calls go through **`https://api.yambr.com/mcp/computer_use`** with `Authorization: Bearer <yambr-key>`. The LiteLLM layer there authenticates, tracks spend, picks the right sandbox by `x-chat-id`, and forwards to `cu.yambr.com` internally.
 
-This keeps the MCP surface behind the same key, rate-limit, and billing pipeline as your model traffic.
-
-If you need a **direct** MCP connection (e.g. Claude Desktop's `streamable-http` transport), the path is:
-
-- **Managed:** not supported today — go through Open WebUI at [chat.yambr.com](https://chat.yambr.com/), or use the OpenAI-compatible endpoint with tool-call support.
-- **Self-hosted:** run your own instance (`docker compose up`) — then you can point any client at `http://localhost:8081/mcp` or your own public URL.
-
-See [Self-hosting quickstart](/install/quickstart).
+See [LiteLLM gateway](/platform/litellm).
 
 ## File URLs: public
 
@@ -60,14 +48,15 @@ Files persist as long as the sandbox container does — `CONTAINER_MAX_AGE_HOURS
 
 ## Live browser and terminal
 
-Both the CDP browser WebSocket and the `ttyd` terminal WebSocket are reachable through `cu.yambr.com` **only** via Open WebUI's Browser and Terminal tabs — the Open WebUI filter negotiates a session-scoped token before opening the socket. There is no public, unauthenticated way to attach.
+Both the CDP browser WebSocket and the `ttyd` terminal WebSocket are reachable through `cu.yambr.com` **only** via [chat.yambr.com](https://chat.yambr.com/)'s Browser and Terminal tabs — the Open WebUI filter negotiates a session-scoped token before opening the socket. There is no public, unauthenticated way to attach.
 
 ## TL;DR
 
 | Use case | Endpoint | Auth |
 |---|---|---|
-| Call LLM + Computer Use tools from code | `https://api.yambr.com` | Yambr API key |
+| Call Computer Use MCP tools from code | `https://api.yambr.com/mcp/computer_use` | Yambr API key |
 | Use the hosted chat | `https://chat.yambr.com` | Sign in |
 | Download a file the model created | `https://cu.yambr.com/files/...` | None (URL is the token) |
 | Preview an artifact in Open WebUI | `https://cu.yambr.com/preview/...` | None (URL is the token) |
-| Connect a raw MCP client | **Not supported on managed Yambr** | [Self-host](/install/quickstart) |
+| Attach to the live browser / terminal | Via chat.yambr.com tabs | Session-scoped token |
+| Call `chat.completions` on Yambr | **Not supported** — use your own LLM provider | [Access model](/platform/access-model) |

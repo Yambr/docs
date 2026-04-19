@@ -13,34 +13,50 @@ There are three good starting points. Pick the one that matches your goal.
 
 Good for: one-off experiments, demos, seeing what the system can do before committing.
 
-## 2. Drive it from your own app (Yambr-hosted)
+## 2. Drive it from your own app (Yambr as MCP provider)
 
-Use Yambr as the backend — OpenAI-compatible API, no Docker on your side.
+Yambr publishes **only** the Computer Use **MCP endpoint** — tools, sandboxes, file hosting. You bring your own LLM provider and wire Yambr in as one more tool server.
+
+<Warning>
+There is no public `chat/completions` endpoint on `api.yambr.com`. LLM requests go to *your* provider; your Yambr key unlocks the MCP tools.
+</Warning>
 
 <Steps>
   <Step title="Get an API key">
-    Sign in at [app.yambr.com](https://app.yambr.com/) and create a key. This is a standard OpenAI-compatible key — it works with the official `openai` SDK, `anthropic` SDK (via LiteLLM), or plain cURL. See [API keys](/platform/api-keys).
+    Sign in at [app.yambr.com](https://app.yambr.com/) with GitHub or Google. New accounts get approved (usually quick — ping us on [Telegram](https://t.me/yambrcom) if needed); default budget is $10 / 30 days. Copy the key value when it's created — you see it once. See [API keys](/platform/api-keys).
   </Step>
-  <Step title="Point your client at api.yambr.com">
+  <Step title="Register the MCP endpoint in your client">
+    The endpoint is `https://api.yambr.com/mcp/computer_use`, auth is `Authorization: Bearer <yambr-key>`. Point any MCP-capable client at it — Claude Desktop, OpenAI Agents SDK, LangChain, Cursor, n8n, self-hosted LiteLLM, Open WebUI.
+
+    Example with the OpenAI Agents SDK (your OpenAI key drives the model; Yambr provides the tools):
+
     ```python
-    from openai import OpenAI
+    import os
+    from agents import Agent, Runner
+    from agents.mcp import MCPServerStreamableHttp
 
-    client = OpenAI(
-        api_key="sk-yambr-...",              # from app.yambr.com
-        base_url="https://api.yambr.com",    # LiteLLM gateway
+    yambr_mcp = MCPServerStreamableHttp(
+        params={
+            "url": "https://api.yambr.com/mcp/computer_use",
+            "headers": {"Authorization": f"Bearer {os.environ['YAMBR_API_KEY']}"},
+        },
+        name="yambr-computer-use",
     )
 
-    resp = client.chat.completions.create(
-        model="claude-sonnet-4-6",            # or any model enabled on your key
-        messages=[{"role": "user", "content": "Build me a landing page for a coffee shop"}],
-        tools=[...],                          # Computer Use tools are routed via cu.yambr.com
+    agent = Agent(
+        name="computer-user",
+        model="gpt-4o",                        # ← YOUR model, YOUR provider
+        mcp_servers=[yambr_mcp],
     )
+
+    result = await Runner.run(agent, "Build me a landing page for a coffee shop")
+    print(result.final_output)
     ```
 
     Full walkthrough: [LiteLLM gateway](/platform/litellm).
   </Step>
   <Step title="Preview artifacts on cu.yambr.com">
-    Files the model creates (PDFs, screenshots, HTML) are served from `https://cu.yambr.com/files/{chat_id}/...` and can be embedded as iframes. Artifacts are reachable **only through the LiteLLM gateway** using your key — there is no direct public MCP endpoint. See [cu.yambr.com](/platform/cu-endpoint).
+    Files the model creates (PDFs, screenshots, HTML) are served from `https://cu.yambr.com/files/{chat_id}/...` and can be embedded as iframes. Artifact URLs are public (URL is the token) and scoped to the chat id. See [cu.yambr.com](/platform/cu-endpoint).
   </Step>
 </Steps>
 

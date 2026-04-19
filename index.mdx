@@ -29,7 +29,7 @@ Each chat session runs in its own isolated Docker container. Works with **any MC
     icon="cloud"
     href="/quickstart"
   >
-    Get an API key at [app.yambr.com](https://app.yambr.com/), point any OpenAI-compatible client at [api.yambr.com](https://api.yambr.com), or just open [chat.yambr.com](https://chat.yambr.com/) and start chatting. No servers to run.
+    Open [chat.yambr.com](https://chat.yambr.com/) to try it in the browser, or get a key at [app.yambr.com](https://app.yambr.com/) and plug Yambr into your agent stack as an MCP tool server at `https://api.yambr.com/mcp/computer_use`. Bring your own model provider. No servers to run.
   </Card>
   <Card
     title="Self-hosted"
@@ -52,7 +52,7 @@ Each chat session runs in its own isolated Docker container. Works with **any MC
     The model picks the right skill, writes the file inside its sandbox, and a preview appears inline. Download, share, iterate.
   </Step>
   <Step title="Grab an API key (optional)">
-    Want to drive it from code? Get a key at [app.yambr.com](https://app.yambr.com/) and point your OpenAI SDK at `https://api.yambr.com`. See [Yambr LiteLLM gateway](/platform/litellm).
+    Want to drive it from code? Get a key at [app.yambr.com](https://app.yambr.com/) and register `https://api.yambr.com/mcp/computer_use` as an MCP tool server in Claude Desktop, the OpenAI Agents SDK, Cursor, n8n, or any MCP-capable client. LLM calls stay on *your* provider. See [LiteLLM gateway](/platform/litellm).
   </Step>
 </Steps>
 

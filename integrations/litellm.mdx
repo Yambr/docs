@@ -1,17 +1,27 @@
 ---
 title: "LiteLLM"
-description: "Connect a LiteLLM proxy to the Computer Use MCP endpoint — managed (api.yambr.com) or self-hosted."
+description: "Register Computer Use as an MCP tool server in your own LiteLLM proxy — managed Yambr endpoint or self-hosted Computer Use."
 ---
 
-LiteLLM's MCP proxy lets you register Computer Use as a tool-providing MCP server and expose it to any model call through the proxy.
+LiteLLM's `mcp_servers` config lets you register Computer Use as a tool-providing MCP server and expose it to any model call routed through your proxy. Your LiteLLM still handles LLM traffic; Yambr stays a tool provider.
 
-## Managed Yambr
+## Pointing LiteLLM at managed Yambr
 
-The managed gateway at [api.yambr.com](https://api.yambr.com) **is** a LiteLLM proxy with Computer Use already wired in. You don't configure anything — your Yambr API key unlocks both model traffic and Computer Use tools. See [Yambr LiteLLM gateway](/platform/litellm).
+```yaml
+mcp_servers:
+  yambr_computer_use:
+    url: "https://api.yambr.com/mcp/computer_use"
+    transport: "http"
+    auth_type: "bearer_token"
+    auth_value: "${YAMBR_API_KEY}"
+    extra_headers:
+      X-Chat-Id: "{chat_id}"
+      X-User-Email: "{user_email}"
+```
 
-This page is for teams running their own LiteLLM proxy against a self-hosted Computer Use Server.
+Models stay wherever you've configured them in the same LiteLLM file (OpenAI, Anthropic, local vLLM, etc.). Yambr does not publish a `chat/completions` endpoint — see [Access model](/platform/access-model).
 
-## Self-hosted LiteLLM config
+## Pointing LiteLLM at a self-hosted Computer Use Server
 
 ```yaml
 mcp_servers:

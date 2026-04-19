@@ -99,7 +99,7 @@ async def main():
 
 ## Managed Yambr
 
-For managed Yambr, the raw MCP endpoint isn't public — go through [api.yambr.com](/platform/litellm) instead. Any OpenAI-compatible tool-enabled chat completion on that endpoint has Computer Use tools available automatically.
+For managed Yambr, the same MCP endpoint is public at `https://api.yambr.com/mcp/computer_use` with `Authorization: Bearer sk-yambr-...`. Use the exact same `initialize` / `tools/list` / `tools/call` / `resources/*` calls shown above — just change the URL and the Bearer token. Your LLM traffic stays on your own provider (OpenAI, Anthropic, whatever); Yambr only provides the Computer Use tools. See [LiteLLM gateway](/platform/litellm) and [Access model](/platform/access-model).
 
 ## See also
 

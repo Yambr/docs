@@ -1,127 +1,125 @@
 ---
 title: "LiteLLM gateway"
-description: "Use api.yambr.com as an OpenAI-compatible endpoint with Computer Use tools routed into every request."
+description: "api.yambr.com is a public MCP endpoint (Computer Use tools only). Bring your own model — we don't resell inference."
 ---
 
-[api.yambr.com](https://api.yambr.com) is a [LiteLLM](https://github.com/BerriAI/litellm) proxy that fronts every model Yambr supports (OpenAI, Anthropic, Google, open-weights, ...) **and** the Computer Use MCP tools. One endpoint, one API key, any model.
+[api.yambr.com](https://api.yambr.com) is a [LiteLLM](https://github.com/BerriAI/litellm) deployment that **only exposes the Computer Use MCP endpoint** publicly. It is *not* a model gateway — we don't proxy `chat/completions` and we don't resell OpenAI / Anthropic / Google inference.
 
-## Base URL
+<Warning>
+**Bring your own model.** Your Yambr API key is for the MCP tool server at `https://api.yambr.com/mcp/computer_use`. LLM requests go to *your* provider (OpenAI, Anthropic, a self-hosted LiteLLM, ...) with *your* key. Pipelines that do `OpenAI(base_url="https://api.yambr.com").chat.completions.create(...)` will fail — that endpoint is closed.
+</Warning>
+
+## The public endpoint
 
 ```
-https://api.yambr.com
+POST https://api.yambr.com/mcp/computer_use
+Authorization: Bearer <yambr-key>
 ```
 
-Standard OpenAI-compatible paths: `/chat/completions`, `/completions`, `/embeddings`, `/models`, ...
+JSON-RPC over Streamable HTTP. Same protocol as any MCP server — see [MCP API reference](/api-reference/introduction).
 
-## Calling models
+What you get:
 
-<CodeGroup>
+- Computer Use tools: `bash_tool`, `view`, `create_file`, `str_replace`, `sub_agent`
+- Per-chat sandbox containers (isolated Docker) — scoped by `x-chat-id` header
+- Live browser, terminal, and file preview URLs served from `cu.yambr.com`
 
-```python Python
+## Three ways to wire it in
+
+### A. MCP-native client (Claude Desktop, MCP Inspector, Agents SDK)
+
+Point your client directly at the endpoint. Your client's host application drives the LLM; our server provides the tools.
+
+```json
+{
+  "mcpServers": {
+    "yambr-computer-use": {
+      "url": "https://api.yambr.com/mcp/computer_use",
+      "transport": "streamable-http",
+      "headers": {
+        "Authorization": "Bearer sk-yambr-..."
+      }
+    }
+  }
+}
+```
+
+See [Claude Desktop integration](/integrations/claude-desktop).
+
+### B. OpenAI / Anthropic SDK — tool-use with your own model
+
+Call your own provider. Hand the model a tool spec that forwards tool calls to our MCP endpoint. Many frameworks (OpenAI Agents SDK, Mastra, Vercel AI SDK, LangChain, Anthropic MCP support) have native MCP-tool adapters — point them at `https://api.yambr.com/mcp/computer_use` with your Yambr key.
+
+Minimal shape with the OpenAI Agents SDK:
+
+```python
+from agents import Agent, Runner
+from agents.mcp import MCPServerStreamableHttp
 from openai import OpenAI
 
-client = OpenAI(
-    api_key="sk-yambr-...",
-    base_url="https://api.yambr.com",
-)
+# Your own OpenAI key / account — NOT a Yambr key
+openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-resp = client.chat.completions.create(
-    model="claude-sonnet-4-6",
-    messages=[{"role": "user", "content": "Hello"}],
-)
-print(resp.choices[0].message.content)
-```
-
-```javascript Node
-import OpenAI from "openai";
-
-const client = new OpenAI({
-  apiKey: "sk-yambr-...",
-  baseURL: "https://api.yambr.com",
-});
-
-const resp = await client.chat.completions.create({
-  model: "claude-sonnet-4-6",
-  messages: [{ role: "user", content: "Hello" }],
-});
-console.log(resp.choices[0].message.content);
-```
-
-```bash cURL
-curl https://api.yambr.com/chat/completions \
-  -H "Authorization: Bearer sk-yambr-..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "claude-sonnet-4-6",
-    "messages": [{"role": "user", "content": "Hello"}]
-  }'
-```
-
-</CodeGroup>
-
-## Listing models
-
-```bash
-curl https://api.yambr.com/models \
-  -H "Authorization: Bearer sk-yambr-..."
-```
-
-The exact set of models enabled on your key is shown in the dashboard.
-
-## Invoking Computer Use
-
-Computer Use tools (`bash_tool`, `view`, `create_file`, `str_replace`, `sub_agent`) are exposed as **MCP tools** proxied through the gateway. There are two common patterns:
-
-### A. Let the gateway handle tool calls end-to-end
-
-Enable the Computer Use MCP server in your LiteLLM team/key settings from the dashboard. Then your normal `chat.completions.create` call gets access to the tools automatically — you pass a session identifier and LiteLLM forwards tool calls to `cu.yambr.com` on your behalf.
-
-```python
-resp = client.chat.completions.create(
-    model="claude-sonnet-4-6",
-    messages=[{"role": "user", "content": "Create a one-page site about coffee"}],
-    extra_headers={
-        "x-chat-id": "user-42-session-abc",      # one sandbox per chat id
-        "x-user-email": "user@example.com",       # for per-user skills & PATs
+yambr_mcp = MCPServerStreamableHttp(
+    params={
+        "url": "https://api.yambr.com/mcp/computer_use",
+        "headers": {"Authorization": f"Bearer {os.environ['YAMBR_API_KEY']}"},
     },
+    name="yambr-computer-use",
 )
+
+agent = Agent(
+    name="computer-user",
+    instructions="Use the Computer Use tools to complete the user's task.",
+    model="gpt-4o",                  # ← YOUR model, YOUR provider
+    mcp_servers=[yambr_mcp],
+)
+
+result = await Runner.run(agent, "Create a pitch deck about coffee")
+print(result.final_output)
 ```
 
-The `x-chat-id` header maps to a dedicated Docker sandbox. Same id across turns = same sandbox (state persists). New id = fresh sandbox.
+Equivalent patterns exist for Anthropic's MCP tool support and for LangChain's `MultiServerMCPClient`. The rule: **model traffic = your provider**; **tool traffic = api.yambr.com**.
 
-### B. Use your own MCP client
+### C. Self-hosted LiteLLM / n8n / Cursor / Open WebUI
 
-If you're building a custom agent loop, connect directly to the MCP endpoint proxied through LiteLLM — see the [MCP API reference](/api-reference/introduction). The URL shape is the standard MCP-over-Streamable-HTTP endpoint; the bearer token is your Yambr API key.
+Register `https://api.yambr.com/mcp/computer_use` as an MCP server in your own tool layer:
 
-<Note>
-There is **no** public `https://cu.yambr.com/mcp` endpoint you can call directly — all traffic must come through the LiteLLM gateway. See [cu.yambr.com](/platform/cu-endpoint).
-</Note>
+- **LiteLLM (self-hosted)** — add under `mcp_servers` in `config.yaml`; see [LiteLLM integration](/integrations/litellm).
+- **n8n** — MCP Tool node; see [n8n](/integrations/n8n).
+- **Cursor** — MCP server entry in `settings.json`.
+- **Open WebUI (self-hosted)** — add it alongside your local Computer Use Server as a second MCP tool.
 
-## Streaming
+All of these hand the model to your configured LLM provider; Yambr stays a tool provider.
 
-Set `stream: true` as usual. The gateway preserves SSE streaming end-to-end, including tool call deltas.
+## Session identity
 
-```python
-stream = client.chat.completions.create(
-    model="claude-sonnet-4-6",
-    messages=[{"role": "user", "content": "Write a haiku"}],
-    stream=True,
-)
-for chunk in stream:
-    print(chunk.choices[0].delta.content or "", end="")
+Every request should set a chat id so each chat gets its own sandbox:
+
 ```
+x-chat-id: <stable-per-conversation>
+x-user-email: user@example.com        # optional, for per-user skills
+```
+
+Same `x-chat-id` across turns = same sandbox (files persist). New id = fresh container.
+
+## Streaming and long tool calls
+
+Long-running `bash_tool` / `sub_agent` calls stream SSE back over the same MCP connection with 15-second heartbeats. If a client closes the socket early the sandbox keeps running — the `sub_agent` tmux session is reconnectable from [chat.yambr.com](https://chat.yambr.com/)'s Terminal tab.
 
 ## Troubleshooting
 
 | Symptom | Likely cause |
 |---|---|
-| `401 Unauthorized` | Key is wrong, revoked, or missing the `Bearer ` prefix. |
-| `429 Too Many Requests` | Hit rate limit — check the dashboard, or use a different model. |
-| `x-chat-id` ignored, no tools fire | Your client isn't enabling the Computer Use MCP server on this key. Toggle it in the dashboard. |
-| Previews show as raw text in Open WebUI | Using stock `ghcr.io/open-webui/open-webui` — patches aren't applied. Managed Yambr uses the patched image already; if you're self-hosting, see [Self-hosting Open WebUI](/integrations/open-webui). |
+| `401 Unauthorized` | Key wrong, revoked, missing `Bearer ` prefix. Rotate at [app.yambr.com](https://app.yambr.com/). |
+| `404 Not Found` on `/v1/chat/completions` | Expected — `api.yambr.com` does **not** expose chat completions. Point your LLM calls at your own provider. |
+| `429 Too Many Requests` | Per-key `max_parallel_requests=5`, or you've hit `max_budget` for the 30-day window. Check the dashboard. |
+| `x-chat-id` ignored, tools fire against a shared sandbox | Header missing or your framework drops custom headers. Most MCP adapters have a `headers` or `extra_headers` option — set it there. |
+| Previews show as raw text in Open WebUI | Using stock `ghcr.io/open-webui/open-webui` — patches aren't applied. Self-host? See [Open WebUI integration](/integrations/open-webui). |
 
 ## Related
 
-- [API keys](/platform/api-keys) — create and manage keys
-- [cu.yambr.com](/platform/cu-endpoint) — what the `cu` subdomain is and isn't
+- [API keys](/platform/api-keys) — create and manage keys at app.yambr.com
+- [Access model](/platform/access-model) — why we expose only MCP
+- [cu.yambr.com](/platform/cu-endpoint) — public file/preview host
 - [MCP API reference](/api-reference/introduction) — raw tool calls

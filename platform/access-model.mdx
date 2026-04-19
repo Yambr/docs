@@ -1,0 +1,67 @@
+---
+title: "Access model — MCP only"
+description: "Yambr publishes one public surface: the Computer Use MCP endpoint. Model inference stays on your own provider."
+---
+
+## The one-line version
+
+**Yambr's public API is MCP only.** You get a sandbox, tools, and file hosting. You bring the model.
+
+## What's behind api.yambr.com
+
+| Path | Public? | What it is |
+|---|---|---|
+| `POST /mcp/computer_use` | **Yes** | MCP over Streamable HTTP. Authenticate with your Yambr key. |
+| `GET /mcp-info` | Yes | Tool list, required headers, endpoint URL. |
+| `POST /v1/chat/completions` | **No** | Closed. Not a resell endpoint. |
+| `POST /v1/completions` | **No** | Closed. |
+| `POST /v1/embeddings` | **No** | Closed. |
+| `GET /v1/models` | **No** | Closed. |
+
+Everything under `/v1/*` is internal plumbing — it's there because `api.yambr.com` is a LiteLLM deployment under the hood, but we don't publish those paths to end users.
+
+## Why MCP-only
+
+A Yambr key costs us compute (Docker sandboxes, disk for artifacts, bandwidth for browser streaming) but **not** tokens. Tokens are paid by you to the model provider you pick.
+
+This keeps two things clean:
+
+- **Billing is local to each provider.** OpenAI bills you for OpenAI usage; we bill you (eventually) for sandbox time. No opaque markup from us reselling inference.
+- **Model choice stays yours.** New model drops? Use it the day it ships, without waiting for us to add it to a gateway. Fine-tunes, private endpoints, self-hosted vLLM — all work the same way.
+
+## How "bring your own model" actually looks
+
+Concretely, you have two kinds of LLM traffic in your app:
+
+1. **Model calls** — `client.chat.completions.create(...)` — these go to *your* provider with *your* key. The provider can be OpenAI, Anthropic, Google, a self-hosted LiteLLM, a fine-tune endpoint, anything.
+
+2. **Tool calls** — when the model wants to run `bash_tool`, `view`, `create_file`, `str_replace`, or `sub_agent`, the framework sends that to Yambr's MCP endpoint with your Yambr key.
+
+Every mature agent framework has a clean split for this. Examples:
+
+- **Claude Desktop** — model is your Anthropic subscription; Yambr goes under `mcpServers` in `claude_desktop_config.json`.
+- **OpenAI Agents SDK** — model is your OpenAI key on the Agent; Yambr goes in `mcp_servers=[MCPServerStreamableHttp(...)]`.
+- **LangChain / LangGraph** — model is your chat model binding; Yambr is an MCP tool via `MultiServerMCPClient`.
+- **LiteLLM (self-hosted)** — model routes you already have; Yambr added under `mcp_servers` in `config.yaml`.
+- **n8n** — model is the AI Agent node's credential; Yambr is the MCP Tool node.
+- **Cursor** — your Cursor subscription runs the model; Yambr is an MCP server in `settings.json`.
+
+## FAQ
+
+**"So I still need an OpenAI / Anthropic key?"**
+Yes — or any OpenAI-compatible key. The Yambr key does not give model access.
+
+**"What about `chat.yambr.com`? Isn't that running models?"**
+Yes — `chat.yambr.com` is a hosted Open WebUI with models we pay for, as a convenience for browser users. That's not exposed as a public API.
+
+**"Can I use sub_agent (Claude Code) without an Anthropic key?"**
+The `sub_agent` tool launches Claude Code inside the sandbox. It needs an `ANTHROPIC_AUTH_TOKEN` — in managed Yambr we supply that for you inside the sandbox env for the hosted Claude Code runs; self-hosters set it in `.env`. See [Claude Code gateway](/install/configuration#gateway-deploy-routing-claude-through-a-proxy).
+
+**"Will you ever open `/v1/chat/completions`?"**
+No plan to. The MCP-only surface is the product.
+
+## Related
+
+- [LiteLLM gateway](/platform/litellm) — the MCP endpoint in detail
+- [API keys](/platform/api-keys) — get a key, use it correctly
+- [cu.yambr.com](/platform/cu-endpoint) — the artifact host

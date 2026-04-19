@@ -1,77 +1,107 @@
 ---
 title: "API keys"
-description: "Create and manage Yambr API keys at app.yambr.com."
+description: "Sign in to app.yambr.com with GitHub or Google, get approved, and manage up to five keys with live spend tracking."
 ---
 
-## Create a key
+## Sign in
 
 <Steps>
-  <Step title="Sign in">
-    Go to [app.yambr.com](https://app.yambr.com/) and sign in (or create an account).
+  <Step title="Open app.yambr.com">
+    Go to [app.yambr.com](https://app.yambr.com/) and click **Sign in**. Two providers: **GitHub** and **Google**. There is no email + password flow.
   </Step>
-  <Step title="Open API keys">
-    Navigate to **Settings → API keys**.
+  <Step title="Request approval">
+    New accounts land in a queue. We eyeball requests and approve most of them quickly — ping us on [Telegram](https://t.me/yambrcom) if it's urgent. Once approved, your default **$10 / 30-day** budget is activated and your first key is issued.
   </Step>
-  <Step title="Create">
-    Click **Create key**, name it (e.g. `local-dev`, `prod-backend`), and copy the value. Keys are shown **only once** — store it in a secret manager.
+  <Step title="Dashboard">
+    You land on the dashboard: list of your keys, live spend per key, and copy-paste integration snippets for Claude Desktop, OpenAI SDK, n8n, and Cursor.
   </Step>
 </Steps>
 
-## Key format
+## What a key is (and isn't)
 
-Yambr API keys look like standard OpenAI keys:
+A Yambr key unlocks the public **MCP endpoint** at `https://api.yambr.com/mcp/computer_use` — that's the Computer Use tools (`bash_tool`, `view`, `create_file`, `str_replace`, `sub_agent`) plus the sandbox that runs them.
 
-```
-sk-yambr-...
-```
+<Warning>
+**A Yambr key is not a model key.** We don't resell OpenAI / Anthropic / Google inference. You bring your own model provider and use our key only for the MCP tool server. See [Access model](/platform/access-model) for why.
+</Warning>
 
-They're used as `Authorization: Bearer` tokens against `https://api.yambr.com`.
+## Key format & limits
+
+- **Display format** — the full key is shown **once** on creation; afterwards the dashboard shows only `sk-...{last-4}`. Copy it into your secret manager immediately.
+- **Per-user cap** — up to **5 active keys** per account.
+- **Budget** — each key has its own `max_budget`, default `$10`, rolling `30d` window. Live spend is displayed as a progress bar per key.
+- **Concurrency** — `max_parallel_requests: 5` per key. Higher concurrency on request.
+
+## Create, revoke, reissue
+
+From the dashboard:
+
+- **Create key** — name it (`local-dev`, `prod-backend`, ...). The full value appears once; copy it. The row then shows the alias, creation date, budget, and live spend.
+- **Revoke** — immediate. In-flight requests fail with `401 Unauthorized`.
+- **Reissue** — rotates the key, keeping the same budget and alias slot. Old value becomes invalid the moment the new one is shown.
 
 ## Use the key
 
+The key is a Bearer token against the MCP endpoint. Three canonical shapes:
+
 <CodeGroup>
 
-```bash cURL
-curl https://api.yambr.com/chat/completions \
+```json Claude Desktop
+{
+  "mcpServers": {
+    "yambr-computer-use": {
+      "url": "https://api.yambr.com/mcp/computer_use",
+      "transport": "streamable-http",
+      "headers": {
+        "Authorization": "Bearer sk-yambr-..."
+      }
+    }
+  }
+}
+```
+
+```python OpenAI Agents SDK
+from agents import Agent, Runner
+from agents.mcp import MCPServerStreamableHttp
+
+yambr_mcp = MCPServerStreamableHttp(
+    params={
+        "url": "https://api.yambr.com/mcp/computer_use",
+        "headers": {"Authorization": f"Bearer {os.environ['YAMBR_API_KEY']}"},
+    },
+    name="yambr-computer-use",
+)
+
+agent = Agent(
+    name="computer-user",
+    model="gpt-4o",              # ← YOUR model, YOUR provider
+    mcp_servers=[yambr_mcp],
+)
+
+result = await Runner.run(agent, "Create a pitch deck about coffee")
+```
+
+```bash cURL (MCP initialize)
+curl -sD - -X POST "https://api.yambr.com/mcp/computer_use" \
   -H "Authorization: Bearer sk-yambr-..." \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "X-Chat-Id: my-session" \
   -d '{
-    "model": "claude-sonnet-4-6",
-    "messages": [{"role": "user", "content": "Hello"}]
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": {"name": "my-client", "version": "1.0"}
+    }
   }'
-```
-
-```python Python (openai)
-from openai import OpenAI
-
-client = OpenAI(
-    api_key="sk-yambr-...",
-    base_url="https://api.yambr.com",
-)
-
-resp = client.chat.completions.create(
-    model="claude-sonnet-4-6",
-    messages=[{"role": "user", "content": "Hello"}],
-)
-```
-
-```javascript Node (openai)
-import OpenAI from "openai";
-
-const client = new OpenAI({
-  apiKey: "sk-yambr-...",
-  baseURL: "https://api.yambr.com",
-});
-
-const resp = await client.chat.completions.create({
-  model: "claude-sonnet-4-6",
-  messages: [{ role: "user", content: "Hello" }],
-});
 ```
 
 </CodeGroup>
 
-See [LiteLLM gateway](/platform/litellm) for the full tour, including how Computer Use tools get wired into a chat completion call.
+The dashboard ships copy-paste snippets for Claude Desktop, OpenAI SDK, n8n / Make, and Cursor — always use those as the source of truth for the exact shape your tools expect.
 
 ## Security
 
@@ -79,14 +109,19 @@ See [LiteLLM gateway](/platform/litellm) for the full tour, including how Comput
 Treat Yambr keys like database passwords:
 
 - **Never commit them to git.** Use `.env` + `.gitignore`, or a secret manager (Doppler, 1Password, Vault).
-- **Never ship them to a browser.** Call `api.yambr.com` only from your backend. If you need a browser-visible token, proxy through your own API.
-- **Rotate on exposure.** Delete the old key in the dashboard and issue a new one.
+- **Never ship them to a browser.** Call the MCP endpoint only from your backend / agent host. If you need a browser-visible token, proxy through your own API.
+- **Rotate on exposure.** Revoke in the dashboard and issue a fresh one — the alias slot stays.
 </Warning>
 
-## Revoking
+## Quotas
 
-In the dashboard, find the key row and click **Revoke**. Revocation is immediate — in-flight requests fail with `401 Unauthorized`.
+- Budget exhaustion (`max_budget` hit): requests return `429` until the 30-day window rolls, or until the budget is raised. The dashboard shows remaining spend live.
+- Concurrency exhaustion (`max_parallel_requests`): extra requests return `429` immediately; retry after the current tool call completes.
 
-## Rate limits & quotas
+Need a higher limit? [Open an issue](https://github.com/Yambr/open-computer-use/issues) or message us on [Telegram](https://t.me/yambrcom).
 
-Limits depend on your plan. The dashboard shows real-time usage and any headroom you have left. If you're hitting limits, contact support via [Telegram](https://t.me/yambrcom) or [open a GitHub issue](https://github.com/Yambr/open-computer-use/issues).
+## Related
+
+- [Dashboard tour](/platform/dashboard) — walk-through of every screen
+- [Access model](/platform/access-model) — MCP-only, bring-your-own-model
+- [LiteLLM gateway](/platform/litellm) — the public MCP endpoint in detail

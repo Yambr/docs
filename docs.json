@@ -26,6 +26,8 @@
             "group": "Yambr Platform",
             "pages": [
               "platform/overview",
+              "platform/access-model",
+              "platform/dashboard",
               "platform/api-keys",
               "platform/litellm",
               "platform/hosted-chat",

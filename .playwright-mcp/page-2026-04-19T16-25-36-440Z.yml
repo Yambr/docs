@@ -1,0 +1,91 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e6]:
+      - generic [ref=e9]: Now available for early access
+      - heading "AI Computer Use via Simple API" [level=1] [ref=e10]:
+        - generic [ref=e11]: AI Computer Use
+        - generic [ref=e12]: via Simple API
+      - paragraph [ref=e13]: Execute shell commands, manage files, browse the web, and run sub-agents — all through an OpenAI-compatible API and MCP protocol.
+      - generic [ref=e14]:
+        - link "Get Access" [ref=e15] [cursor=pointer]:
+          - /url: /auth/login
+        - link "See What's Possible" [ref=e16] [cursor=pointer]:
+          - /url: "#features"
+      - generic [ref=e18]:
+        - generic [ref=e23]: terminal
+        - generic [ref=e24]:
+          - paragraph [ref=e25]: $ curl https://api.mcp.yambr.com/v1/chat/completions \
+          - paragraph [ref=e26]: "-H \"Authorization: Bearer sk-yambr-...\" \\"
+          - paragraph [ref=e27]: "-d '{\"model\": \"claude-sonnet\", \"messages\": [...]}'"
+          - paragraph [ref=e28]: "{ \"choices\": [{ \"message\": { \"content\": \"Done! I executed the script...\" } }] }"
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - heading "Everything an AI agent needs" [level=2] [ref=e32]
+        - paragraph [ref=e33]: Full computer access through MCP tools, running in isolated containers.
+      - generic [ref=e34]:
+        - generic [ref=e37] [cursor=pointer]:
+          - img [ref=e39]
+          - heading "Shell Execution" [level=3] [ref=e41]
+          - paragraph [ref=e42]: Run any bash command in an isolated Docker container. Install packages, run scripts, process data.
+        - generic [ref=e45] [cursor=pointer]:
+          - img [ref=e47]
+          - heading "File Management" [level=3] [ref=e49]
+          - paragraph [ref=e50]: Create, edit, and view files. Build full projects, modify configs, generate code.
+        - generic [ref=e53] [cursor=pointer]:
+          - img [ref=e55]
+          - heading "Web Browsing" [level=3] [ref=e57]
+          - paragraph [ref=e58]: Navigate websites, extract data, fill forms. Automate browser-based workflows.
+        - generic [ref=e61] [cursor=pointer]:
+          - img [ref=e63]
+          - heading "Sub-Agents" [level=3] [ref=e65]
+          - paragraph [ref=e66]: Spawn nested AI agents for complex multi-step tasks. Orchestrate autonomous workflows.
+    - generic [ref=e68]:
+      - heading "Three steps to get started" [level=2] [ref=e70]
+      - generic [ref=e71]:
+        - generic [ref=e74]:
+          - text: "01"
+          - heading "Sign Up" [level=3] [ref=e75]
+          - paragraph [ref=e76]: Log in with Google or GitHub. Takes 10 seconds.
+        - generic [ref=e79]:
+          - text: "02"
+          - heading "Get Your Key" [level=3] [ref=e80]
+          - paragraph [ref=e81]: Your API key is created automatically. No waiting, no approval needed.
+        - generic [ref=e83]:
+          - text: "03"
+          - heading "Start Building" [level=3] [ref=e84]
+          - paragraph [ref=e85]: Use your key with Claude Desktop, Cursor, OpenAI SDK, or any HTTP client.
+    - generic [ref=e87]:
+      - generic [ref=e88]:
+        - heading "Works everywhere" [level=2] [ref=e89]
+        - paragraph [ref=e90]: OpenAI-compatible API + MCP protocol. Plug into your existing tools.
+      - generic [ref=e91]:
+        - generic [ref=e92] [cursor=pointer]:
+          - paragraph [ref=e93]: Claude Desktop
+          - paragraph [ref=e94]: MCP
+        - generic [ref=e95] [cursor=pointer]:
+          - paragraph [ref=e96]: Claude Code
+          - paragraph [ref=e97]: MCP
+        - generic [ref=e98] [cursor=pointer]:
+          - paragraph [ref=e99]: Cursor
+          - paragraph [ref=e100]: OpenAI API
+        - generic [ref=e101] [cursor=pointer]:
+          - paragraph [ref=e102]: Continue.dev
+          - paragraph [ref=e103]: OpenAI API
+        - generic [ref=e104] [cursor=pointer]:
+          - paragraph [ref=e105]: OpenAI SDK
+          - paragraph [ref=e106]: REST API
+        - generic [ref=e107] [cursor=pointer]:
+          - paragraph [ref=e108]: n8n
+          - paragraph [ref=e109]: OpenAI API
+        - generic [ref=e110] [cursor=pointer]:
+          - paragraph [ref=e111]: Make.com
+          - paragraph [ref=e112]: OpenAI API
+        - generic [ref=e113] [cursor=pointer]:
+          - paragraph [ref=e114]: Any HTTP Client
+          - paragraph [ref=e115]: REST API
+    - generic [ref=e117]:
+      - generic [ref=e118]:
+        - generic [ref=e119]: Yambr
+        - generic [ref=e120]: Computer Use API
+      - paragraph [ref=e121]: Powered by LiteLLM + MCP Protocol
+  - region "Notifications alt+T"
