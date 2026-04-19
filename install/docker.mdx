@@ -53,22 +53,28 @@ Container resurrection: saved metadata lets the server recreate a GC'd container
 
 ## Networking
 
-```
-         ┌──────────────┐
-browser ─┤ open-webui   │─┐
-         └──────────────┘ │
-                          │ docker network: computer-use-net
-         ┌──────────────┐ │
-         │ computer-    │─┤
-         │ use-server   │ │
-         └──────┬───────┘ │
-                │         │
-         spawns │         │
-                ▼         │
-         ┌──────────────┐ │
-         │ chat-ABC     │─┘
-         │ (sandbox)    │
-         └──────────────┘
+```mermaid
+flowchart LR
+    browser([Browser])
+    owui[open-webui]
+    server[computer-use-server]
+    sandbox[(chat-ABC<br/>sandbox)]
+
+    browser --> owui
+    owui --- server
+    server -- spawns --> sandbox
+    owui --- sandbox
+
+    subgraph net [Docker network: computer-use-net]
+        owui
+        server
+        sandbox
+    end
+
+    classDef node fill:#ECFCCB,stroke:#65A30D,stroke-width:2px,color:#1A2E05;
+    classDef client fill:#F1F5F9,stroke:#64748B,color:#0F172A;
+    class owui,server,sandbox node;
+    class browser client;
 ```
 
 The sandbox is **not** on the public network. Everything external flows through `computer-use-server`.

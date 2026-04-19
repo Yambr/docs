@@ -14,21 +14,24 @@ Yambr is a managed deployment of Open Computer Use. Four public services, each w
 
 ## How they talk to each other
 
-```
-Browser ──────────► chat.yambr.com ────────┐
-                                           │
-Your code ────────► api.yambr.com ──────┐  │
-                  (LiteLLM gateway)     ▼  ▼
-                                ┌───────────────────┐
-                                │   cu.yambr.com    │
-                                │  Computer Use     │
-                                │  Server + sandbox │
-                                │  containers       │
-                                └───────────────────┘
-                                        ▲
-                                        │ public /files/{chat_id}/...
-                                        │ preview iframes
-Browser ────────────────────────────────┘
+```mermaid
+flowchart LR
+    browser([Browser])
+    code([Your code])
+    chat[chat.yambr.com<br/>Hosted Open WebUI]
+    api[api.yambr.com<br/>LiteLLM gateway]
+    cu[(cu.yambr.com<br/>Computer Use Server<br/>+ sandbox containers)]
+
+    browser -- sign in --> chat
+    code -- OpenAI-compatible<br/>API key --> api
+    chat -- MCP tool calls --> api
+    api -- proxied MCP --> cu
+    cu -. public /files/&#123;chat_id&#125;/…<br/>preview iframes .-> browser
+
+    classDef service fill:#ECFCCB,stroke:#65A30D,stroke-width:2px,color:#1A2E05;
+    classDef client fill:#F1F5F9,stroke:#64748B,color:#0F172A;
+    class chat,api,cu service;
+    class browser,code client;
 ```
 
 <Note>
