@@ -8,6 +8,15 @@
     "dark": "#3F6212"
   },
   "favicon": "/favicon.png",
+  "seo": {
+    "indexHiddenPages": false,
+    "metatags": {
+      "og:image": "https://yambr.com/og-image.svg",
+      "og:site_name": "Yambr Docs",
+      "twitter:card": "summary_large_image",
+      "twitter:image": "https://yambr.com/og-image.svg"
+    }
+  },
   "navigation": {
     "tabs": [
       {

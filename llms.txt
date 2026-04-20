@@ -1,0 +1,55 @@
+# Yambr Documentation
+> docs.yambr.com — complete documentation for the Yambr Open Computer Use platform
+
+## What is Yambr?
+Yambr is an open-source computer use API that gives AI agents an isolated workspace
+with browser automation (Playwright), terminal access, file system, and sub-agent
+orchestration — all via MCP (Model Context Protocol).
+
+## Key documentation sections
+
+### Getting started
+- Quickstart: https://docs.yambr.com/quickstart
+- Architecture overview: https://docs.yambr.com/architecture
+- Introduction: https://docs.yambr.com/introduction
+
+### Platform (cloud)
+- Platform overview: https://docs.yambr.com/platform/overview
+- Getting API keys: https://docs.yambr.com/platform/api-keys
+- Hosted chat interface: https://docs.yambr.com/platform/hosted-chat
+- Computer Use endpoint: https://docs.yambr.com/platform/cu-endpoint
+
+### Self-hosting
+- Requirements: https://docs.yambr.com/install/requirements
+- Docker quickstart: https://docs.yambr.com/install/quickstart
+- Configuration: https://docs.yambr.com/install/configuration
+- Model settings: https://docs.yambr.com/install/model-settings
+
+### Features
+- Browser automation: https://docs.yambr.com/features/browser
+- Terminal access: https://docs.yambr.com/features/terminal
+- Code execution: https://docs.yambr.com/features/code-execution
+- Sub-agents: https://docs.yambr.com/features/sub-agents
+- File preview: https://docs.yambr.com/features/file-preview
+
+### Skills
+- Skills overview: https://docs.yambr.com/skills/overview
+- Creating custom skills: https://docs.yambr.com/skills/creating
+- Skills reference: https://docs.yambr.com/skills/reference
+
+### Integrations
+- Open WebUI: https://docs.yambr.com/integrations/open-webui
+- Claude Desktop: https://docs.yambr.com/integrations/claude-desktop
+- LiteLLM: https://docs.yambr.com/integrations/litellm
+- n8n: https://docs.yambr.com/integrations/n8n
+
+### API Reference
+- MCP API introduction: https://docs.yambr.com/api-reference/introduction
+- MCP endpoint: https://api.yambr.com/mcp/computer_use
+
+## Links
+- Website: https://yambr.com
+- App / API keys: https://app.yambr.com
+- Chat interface: https://chat.yambr.com
+- GitHub: https://github.com/Yambr/open-computer-use
+- Telegram: https://t.me/yambrcom
