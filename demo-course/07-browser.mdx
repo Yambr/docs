@@ -24,7 +24,7 @@ On this run, the model:
 
 1. Opened `https://news.ycombinator.com` in the sandbox browser.
 2. Took a full-page screenshot of the front page.
-3. Extracted the post list — title, score, comment count, link, and rank — for **all 30 visible stories**, not just five.
+3. Extracted the visible post list — title, score, comment count, link, and rank — across the front pages it scanned (the summary mentions "trending across pages 1-3").
 4. Filtered the list against the keyword set (`AI`, `LLMs?`, `agents?`, `Claude`, case-insensitive).
 5. Ranked the matches by points and picked the top five.
 6. Wrote a Markdown table with title / points / comments / link columns and a one-line summary at the top.
