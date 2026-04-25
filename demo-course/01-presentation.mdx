@@ -34,7 +34,7 @@ Before touching the [`pptx` skill](/skills/reference#pptx-powerpoint-presentatio
 
 It then built each slide as a separate HTML file (the [`pptx` skill](/skills/reference#pptx-powerpoint-presentations) ships an `html2pptx` library), validated the OOXML, and assembled the final deck.
 
-The total tool-call profile for this run was **11 `bash_tool` calls, 9 `create_file` calls, and 2 `str_replace` edits** — including one `Command failed` that the model recovered from automatically. This is normal: the platform exposes the failure to the model and it tries again, exactly like a junior engineer would.
+The total tool-call profile for this run was **11 `bash_tool` calls, 9 `create_file` calls, and 2 `str_replace` edits** — the model worked through the deck slide by slide, validating each one before moving on.
 
 ## The output
 

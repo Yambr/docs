@@ -29,22 +29,6 @@ week,wau
 Use Python (matplotlib, pandas) in the sandbox. Save the chart to outputs and show it inline.
 ```
 
-## A real failure, then a recovery
-
-This scenario is also useful because the **first attempt failed** with a real upstream provider error:
-
-<img src="/images/demo-course/05-chart-error.png" alt="OpenRouter base64 decode error in the chat — model surfaced the failure honestly" />
-
-```
-litellm.BadRequestError: OpenrouterException — {"error":{"message":"Provider returned error",
-  "code":400,"metadata":{"raw":"{\"error\":{\"message\":\"base64 decode fail.\",..."
-provider_name: Alibaba
-```
-
-The platform surfaces the underlying provider error directly (LiteLLM → OpenRouter → Alibaba). It also offers context-aware **follow-up suggestions** at the bottom: *"Can we try generating the chart with a different model?" / "Is there something wrong with my CSV data causing this error?"*. Errors aren't silently swallowed — they become part of the conversation, and the user can resolve them with one click.
-
-We re-submitted the same prompt in a new chat (in this case the issue was a doubled `\n` in the input encoding, not a model problem) and the second attempt succeeded immediately.
-
 ## The output
 
 <img src="/images/demo-course/05-chart-final.png" alt="SaaS user-growth analysis — analysis on the left, matplotlib chart on the right with annotated inflection point" />
