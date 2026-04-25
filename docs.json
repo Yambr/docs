@@ -32,6 +32,21 @@
             ]
           },
           {
+            "group": "Demo course",
+            "pages": [
+              "demo-course/overview",
+              "demo-course/01-presentation",
+              "demo-course/02-document",
+              "demo-course/03-spreadsheet",
+              "demo-course/04-pdf",
+              "demo-course/05-data-chart",
+              "demo-course/06-frontend",
+              "demo-course/07-browser",
+              "demo-course/08-skill-creator",
+              "demo-course/09-whats-next"
+            ]
+          },
+          {
             "group": "Yambr Platform",
             "pages": [
               "platform/overview",

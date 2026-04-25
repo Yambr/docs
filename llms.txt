@@ -13,6 +13,18 @@ orchestration — all via MCP (Model Context Protocol).
 - Architecture overview: https://docs.yambr.com/architecture
 - Introduction: https://docs.yambr.com/introduction
 
+### Demo course (eight live scenarios on chat.yambr.com)
+- Course overview: https://docs.yambr.com/demo-course/overview
+- 1. Investor pitch deck (pptx skill): https://docs.yambr.com/demo-course/01-presentation
+- 2. Project proposal in Word (docx skill): https://docs.yambr.com/demo-course/02-document
+- 3. Marketing budget tracker in Excel (xlsx skill): https://docs.yambr.com/demo-course/03-spreadsheet
+- 4. Freelance invoice PDF (pdf skill): https://docs.yambr.com/demo-course/04-pdf
+- 5. Data → chart with Python: https://docs.yambr.com/demo-course/05-data-chart
+- 6. Roasthaus landing page (frontend-design skill): https://docs.yambr.com/demo-course/06-frontend
+- 7. Hacker News AI digest (playwright-cli skill): https://docs.yambr.com/demo-course/07-browser
+- 8. Building the invoice-builder skill (skill-creator): https://docs.yambr.com/demo-course/08-skill-creator
+- 9. What's next — n8n teaser: https://docs.yambr.com/demo-course/09-whats-next
+
 ### Platform (cloud)
 - Platform overview: https://docs.yambr.com/platform/overview
 - Getting API keys: https://docs.yambr.com/platform/api-keys

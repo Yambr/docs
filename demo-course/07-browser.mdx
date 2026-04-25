@@ -1,0 +1,66 @@
+---
+title: "7. Hacker News AI digest"
+description: "Open Hacker News in a real browser, find the top 5 AI-related stories, and produce a Markdown digest with a screenshot — using the playwright-cli skill."
+---
+
+This scenario is what most people imagine when they hear "agent." The model is given a goal that requires **using the web like a person would**: open a real page, read it, decide what's relevant, extract specific data, and produce a structured artifact. The [`playwright-cli` skill](/skills/reference#playwright-cli-browser-automation) makes that one prompt away.
+
+## The prompt
+
+```text
+Use the playwright-cli skill to open Hacker News (https://news.ycombinator.com),
+find the top 5 stories whose titles mention AI, LLMs, agents, or Claude
+(case-insensitive). For each: title, points, comment count, link.
+
+Return the result as a clean Markdown digest with a single-line summary at the top.
+Take a screenshot of the HN front page and include it in the output.
+```
+
+## What happened
+
+The [`playwright-cli` skill](/skills/reference#playwright-cli-browser-automation) gives the model high-level wrappers for the same Playwright primitives a human developer would use: navigate, wait for content, query selectors, extract text, screenshot. Combined with the [live browser](/features/browser), the user can watch the agent operate the page in real time.
+
+On this run, the model:
+
+1. Opened `https://news.ycombinator.com` in the sandbox browser.
+2. Took a full-page screenshot of the front page.
+3. Extracted the post list — title, score, comment count, link, and rank — for **all 30 visible stories**, not just five.
+4. Filtered the list against the keyword set (`AI`, `LLMs?`, `agents?`, `Claude`, case-insensitive).
+5. Ranked the matches by points and picked the top five.
+6. Wrote a Markdown table with title / points / comments / link columns and a one-line summary at the top.
+
+## The output
+
+<img src="/images/demo-course/07-browser-final.png" alt="HN AI digest result — quick summary on the left with emoji bullets, Markdown digest on the right" />
+
+The right-hand panel renders the Markdown digest:
+
+> # Hacker News AI/LLM/Agent Top 5 Digest 🤖
+>
+> **Summary:** Top AI stories today feature massive DeepSeek updates, Claude criticism, agent collaboration tools, and LLM-powered browser automation tools trending across pages 1-3.
+>
+> | # | Title | Points | Comments |
+> |---|-------|--------|----------|
+> | 1 | DeepSeek v4 ... | 2,029 | 1,546 |
+> | ... | ... | ... | ... |
+
+And the left side gives a quick scan with hand-picked emojis:
+
+- 🐳 **DeepSeek v4** launching with 2,029 points (huge community buzz!)
+- 😤 **I cancelled Claude** criticism piece with 933 points
+- 🧠 **Multiple agent tools** trending (Karpathy's LLM wiki, agent code testing)
+- 😔 **Public sentiment** piece about the AI industry's reputation
+
+The screenshot of the HN front page is also embedded in the message — visible at the top of the panel — so the user can verify the data was pulled from the real page, not hallucinated.
+
+## Why it works
+
+This is the cleanest example in the course of **the model using a tool, not just describing one**:
+
+1. **The [`playwright-cli` skill](/skills/reference#playwright-cli-browser-automation)** gives it `navigate / screenshot / extract` primitives that map directly to the task.
+2. **The [live browser](/features/browser)** means the user can step in if something goes wrong — for example, if HN is down and the page doesn't load, the user sees the same blank page the agent does.
+3. **The terminal** lets the model run filtering and ranking in Python after extraction, instead of trying to do it all from the LLM's working memory.
+
+The same prompt would work tomorrow against any other content site: Reddit, ProductHunt, Twitter/X (with login), arXiv, GitHub trending. The skill is the abstraction; the goal is interchangeable.
+
+Next: [Building the invoice-builder skill →](/demo-course/08-skill-creator) — the moment of leverage.

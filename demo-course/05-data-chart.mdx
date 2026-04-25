@@ -1,0 +1,71 @@
+---
+title: "5. Data → chart"
+description: "Take a 12-row CSV of weekly active users, produce a publication-quality chart with a smoothed trendline and an annotated inflection point, plus a written analysis."
+---
+
+This scenario is different from the four before it. There is no "chart skill" — the model uses **Python directly** in the [code-execution](/features/code-execution) sandbox: `pandas` to load the data, `matplotlib` to render it, and `numpy` to fit the trendline. The skill being demonstrated here is **the platform itself** — the fact that the model has a real Python runtime, real packages, and a way to surface PNG outputs back into the chat.
+
+## The prompt
+
+```text
+Here is a CSV of weekly active users for an indie SaaS over 12 weeks.
+Analyze it and produce a publication-quality PNG line chart showing the trend
+with a smoothed trendline, plus a short text summary highlighting the inflection point.
+
+week,wau
+1,420
+2,455
+3,478
+4,510
+5,529
+6,548
+7,612
+8,689
+9,742
+10,801
+11,856
+12,910
+
+Use Python (matplotlib, pandas) in the sandbox. Save the chart to outputs and show it inline.
+```
+
+## A real failure, then a recovery
+
+This scenario is also useful because the **first attempt failed** with a real upstream provider error:
+
+<img src="/images/demo-course/05-chart-error.png" alt="OpenRouter base64 decode error in the chat — model surfaced the failure honestly" />
+
+```
+litellm.BadRequestError: OpenrouterException — {"error":{"message":"Provider returned error",
+  "code":400,"metadata":{"raw":"{\"error\":{\"message\":\"base64 decode fail.\",..."
+provider_name: Alibaba
+```
+
+The platform surfaces the underlying provider error directly (LiteLLM → OpenRouter → Alibaba). It also offers context-aware **follow-up suggestions** at the bottom: *"Can we try generating the chart with a different model?" / "Is there something wrong with my CSV data causing this error?"*. Errors aren't silently swallowed — they become part of the conversation, and the user can resolve them with one click.
+
+We re-submitted the same prompt in a new chat (in this case the issue was a doubled `\n` in the input encoding, not a model problem) and the second attempt succeeded immediately.
+
+## The output
+
+<img src="/images/demo-course/05-chart-final.png" alt="SaaS user-growth analysis — analysis on the left, matplotlib chart on the right with annotated inflection point" />
+
+The model didn't just produce a chart — it produced an **analysis** with a recommendation:
+
+- **Headline:** "Your SaaS grew from 420 to 910 weekly active users over 12 weeks — an impressive **116.7% total growth**."
+- **Key findings:** average weekly gain 44.5 users, starting momentum (~19 users/week for weeks 1-6), **inflection point at week 6-7** (12% jump, +64 users in one week), post-inflection acceleration (~55 users/week — nearly 3x the earlier pace).
+- **Interpretation:** "Something shifted between Week 6 and 7 that supercharged your growth. Whether it's product-market fit kicking in, a marketing campaign landing, or network effects activating — **you've got momentum now**."
+- **Recommendation:** "Double down on what worked around Week 6-7. That's your secret sauce."
+
+The chart on the right is a real `matplotlib` PNG — line plot with markers, a fitted trendline, and **two highlighted regions**: a yellow band for the starting momentum phase and an orange dot annotating the inflection point at Week 6.
+
+## Why it works
+
+Three platform pieces, no skill needed:
+
+1. **[Code execution](/features/code-execution)** — full Python sandbox with `pandas`, `matplotlib`, `numpy`, `scipy`, etc. pre-installed.
+2. **File mounts** — the chart is saved to `/mnt/user-data/outputs/` and surfaced back to the chat as an inline image.
+3. **The model's own reasoning** — given the data, it picked an inflection point and built a story around it. That's not a skill, that's the model doing what LLMs are good at, with real numbers in front of it.
+
+This is also where the platform shines compared to "AI artifact" demos: the chart is a **file you can download**, not an embedded image you can't reuse. Right-click → save → drop into a deck.
+
+Next: [Roasthaus landing page (live in browser) →](/demo-course/06-frontend)

@@ -1,0 +1,64 @@
+---
+title: "Demo course"
+description: "A guided tour of what Yambr Computer Use can do out of the box — eight real scenarios captured live on chat.yambr.com, ending with the moment a user discovers /skill-creator."
+---
+
+This course is the answer to a single question: **what can Yambr Computer Use actually do today, with no setup?**
+
+Eight scenarios. Real prompts. Real screenshots from `chat.yambr.com`. Same models you can use right now (`🚀 Qwen 3.5 Flash`, `💾 Qwen 3.6 Plus`). No staging environment, no edits — every output below was produced live by an LLM with access to the platform's built-in skills.
+
+<img src="/images/demo-course/00-chat-home.png" alt="chat.yambr.com home with Computer Use enabled banner" />
+
+## Why a course at all
+
+Most "AI assistant" demos collapse into the same generic Markdown reply. Computer Use is different because the model has tools: a sandboxed Linux box, a real browser, and a curated set of [skills](/skills/overview) for documents, spreadsheets, presentations, charts, and PDFs.
+
+What you get is not "an answer." You get a **file**, sometimes a whole folder, often a live page in a browser.
+
+The course is structured as a deliberate arc:
+
+<Steps>
+  <Step title="Crawl — five everyday office files">
+    Presentation, Word document, spreadsheet, PDF, data chart. The boring stuff most knowledge work actually consists of. The model picks the right skill, generates the file, and validates it.
+  </Step>
+  <Step title="Walk — two scenarios that earn the wow">
+    A custom landing page rendered live in the browser tab next to the chat. A scraping job that opens Hacker News, reads it, and produces a Markdown digest. Both scenarios use sub-agents and the live browser — capabilities most chat UIs simply don't have.
+  </Step>
+  <Step title="Run — the moment of leverage">
+    The user has now generated three styled invoice PDFs by hand. They notice the pattern. They ask `/skill-creator` to package the recurring work into a reusable skill. Next time, one function call replaces the whole prompt.
+  </Step>
+</Steps>
+
+The point of the course is not to teach you how to write prompts. It is to make the next step obvious: **once you've used the platform a few times, you stop prompting and start building skills.**
+
+## The eight scenarios
+
+| # | Scenario | Skill | Output |
+|---|----------|-------|--------|
+| 1 | [Investor pitch deck](/demo-course/01-presentation) | `pptx` | 6-slide `.pptx` with a custom design system |
+| 2 | [Project proposal](/demo-course/02-document) | `docx` | 2-page `.docx` with H1/H2, bulleted goals, a 3-row timeline table, and tracked changes |
+| 3 | [Marketing budget tracker](/demo-course/03-spreadsheet) | `xlsx` | 2-sheet `.xlsx` with live formulas, conditional formatting, and a bar chart |
+| 4 | [Freelance invoice](/demo-course/04-pdf) | `pdf` | Styled PDF with header band, monospace numbers, line items, tax math |
+| 5 | [SaaS user-growth chart](/demo-course/05-data-chart) | Python + matplotlib | PNG chart with trendline + annotated inflection point + analysis |
+| 6 | [Roasthaus landing page](/demo-course/06-frontend) | `frontend-design` | Single-page HTML site rendered in the live browser |
+| 7 | [Hacker News AI digest](/demo-course/07-browser) | `playwright-cli` | Scraped HN front page → Markdown digest with screenshot |
+| 8 | [Building the invoice-builder skill](/demo-course/08-skill-creator) | `skill-creator` | Reusable skill packaged from a recurring task |
+
+After the eight scenarios, [What's next](/demo-course/09-whats-next) shows where this is heading — your skills become callable building blocks for [n8n](/integrations/n8n), CI pipelines, or any tool that can hit an HTTP endpoint.
+
+## How to read each page
+
+Every scenario page has the same shape:
+
+- **The prompt** — exact text, copy-pasteable. Try it yourself.
+- **What happened** — the tool calls the model made, with screenshots from the live chat.
+- **The output** — what was actually generated, so you can see whether the result is good.
+- **Why it works** — a short note on which skill is doing the heavy lifting.
+
+The screenshots are from `chat.yambr.com` running `🚀 Qwen 3.5 Flash` (most scenarios) or `💾 Qwen 3.6 Plus` (the pitch deck). Both models are available to anyone with a Yambr account — there is nothing secret about the setup.
+
+<Note>
+This course is opinionated about one thing: **don't stop at chatting**. Chatting with the platform is the easy part. The real lift comes from converting what you do repeatedly into skills, and then chaining those skills together. That's the arc the course is built around.
+</Note>
+
+Start with [scenario 1 →](/demo-course/01-presentation)
