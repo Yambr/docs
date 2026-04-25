@@ -1,67 +1,42 @@
 ---
 title: "9. What's next"
-description: "Your skills become callable building blocks. Plug them into n8n, schedule them in CI, expose them as HTTP endpoints. The next layer of leverage is automation, not prompting."
+description: "Computer Use is an MCP server. The same endpoint your chat uses can be reached from n8n, a Telegram bot, or any in-house tool — skills travel with it."
 ---
 
-The eight scenarios were a self-contained tour of what Computer Use can do today, ending with the moment a user packages a recurring task into a skill. This page is about what happens after that.
+The eight scenarios were a self-contained tour: crawl with one-off prompts, walk with the live browser and sub-agents, then run by packaging a recurring task into a skill. Scenario 8 ended on the moment the skill exists. This page is about what happens after that.
 
-## The mental model
+## The pivot
 
-A Yambr skill is just a folder with code and a `SKILL.md` describing it. Three properties make that folder useful beyond the chat:
+Once a skill is built, the next question isn't "how do I deploy this skill." Skills aren't deployed as standalone services and they aren't HTTP endpoints. They live inside the Computer Use sandbox alongside the browser, terminal, file system, and sub-agents, and the model picks them up during a tool-call session.
 
-1. **It has a stable name.** `invoice-builder` is the same thing tomorrow as it is today. A model in the same workspace can call it without remembering the prompt.
-2. **It has a stable input contract.** `client, invoice_number, line_items, tax_rate` — that's a schema. Schemas can be validated, serialized, sent over the wire.
-3. **It produces a stable output.** A PDF in `/mnt/user-data/outputs/`, with a known shape. That output can be copied, mailed, stored, attached to a record.
+The right question is: **where else can I trigger a Computer Use session that has this skill available?** That's an MCP question.
 
-Once you have those three things, the question stops being "how do I prompt the model better?" and becomes "what should call this skill, and when?"
+## Computer Use is an MCP server
 
-## n8n: skills as workflow nodes
+`api.yambr.com` — and any [self-hosted](/install/quickstart) Open Computer Use instance — exposes the Computer Use tool over the [Model Context Protocol](/api-reference/introduction). Any MCP-capable client can connect to it and get the full sandbox: browser, shell, files, sub-agents, and every skill installed on that instance. The chat at `chat.yambr.com` is one such client. It isn't special — it's just Open WebUI pointed at the same [`/mcp` endpoint](/platform/cu-endpoint) you can point anything else at.
 
-[n8n](https://n8n.io) is a node-based workflow engine — drag-and-drop automations that connect SaaS APIs, databases, and arbitrary HTTP endpoints. The Yambr platform exposes its tooling through the [LiteLLM](/integrations/litellm) gateway and the [hosted chat](/platform/hosted-chat), which means n8n can drive the same skills you've been calling from the chat UI.
+Three concrete shapes that take.
 
-The mental shift is small but important:
+**A messenger bot.** A small Python or Node service wraps an LLM, lists the Yambr MCP endpoint as one of its tool sources, and forwards user messages from Telegram or Slack into the agent loop. The user types in a chat they already use every day; the agent runs in the Yambr sandbox and replies with whatever artifact the skill produced — a deck, a spreadsheet, a PDF link. From the user's side it feels like a smart bot. From the platform's side it's the same Computer Use session you saw in the demo course.
 
-- In the chat, **a person triggers** a skill (by writing a prompt).
-- In n8n, **an event triggers** the same skill (a webhook, a schedule, a row appearing in a database).
+**An n8n workflow.** n8n's MCP client node connects to `api.yambr.com/mcp`, the LLM step decides which Computer Use action to invoke, and the rest of the workflow handles the input event (a webhook, a schedule, a row in a database) and the output (an email, a file in object storage, a downstream API call). The skill the model uses on the Yambr side is whatever's installed on the sandbox — no per-workflow wiring. See [Integrations → n8n](/integrations/n8n) for the connection details.
 
-A concrete example: imagine your CRM emits an `invoice.requested` event with the deal data already structured. A two-node n8n workflow — *"on event → call invoice-builder skill → email the PDF to the customer"* — turns the model into a service. There is no chat, no human in the loop, and no prompt to maintain. The skill is just *there*, doing its job.
+**A custom in-house tool.** Same MCP endpoint, but the client is something the team built themselves: a side panel inside their CRM, a CLI for the ops team, an internal Slack bot that only their company can see. The auth, the UX, and the trigger surface are all decided in-house; the engine is the shared Computer Use server. [Integrations → Custom](/integrations/custom) walks through the protocol-level wiring, and [LiteLLM](/integrations/litellm) covers the gateway layer if the client needs unified billing across providers.
 
-We are not going to walk through wiring this up in this course — that deserves its own dedicated page. The takeaway is: **the skill you built in scenario 8 is already n8n-ready**. The hard part was the packaging, not the integration.
+## Skills travel with the instance
 
-When you're ready, see [Integrations → n8n](/integrations/n8n).
+The leverage of this model comes from where skills live. A skill is a folder inside the Computer Use sandbox; every session on that instance can see it. If the team adds an `invoice-builder` skill to a self-hosted instance, every MCP client that talks to that instance — the chat, the n8n workflow, the Telegram bot, the CRM side panel — gets it for free, without a redeploy on the client side. The user-facing surface changes. The engine doesn't.
 
-## What else falls out of having skills
+That's also why the [skills overview](/skills/overview), [creating skills](/skills/creating), and [dynamic skills](/skills/dynamic) pages are worth a second read once you start thinking about multiple clients. The skill you write once is the skill every client invokes.
 
-- **CI/CD pipelines.** A skill that "generates the weekly customer-facing release notes from a Git diff" can run as a GitHub Action.
-- **Scheduled reports.** A skill that "pulls metrics from BigQuery and emails a PDF every Monday at 8am" replaces a half-broken cron job.
-- **Internal tools.** A skill that "takes a customer email and drafts a response based on the knowledge base" can be exposed as a Slack slash command via [LiteLLM](/integrations/litellm).
-- **Multi-step agents.** A skill is itself a callable, so a higher-level [sub-agent](/features/sub-agents) can compose multiple skills (`scrape → summarize → email`) into a single behaviour.
+## What to do next
 
-The common thread is the same in every case. The skill is a **named function with a schema**. Once it exists, anything that can invoke a function can use it.
+If you want to try this:
 
-## A recap of the arc
+1. Get an API key from [app.yambr.com](https://app.yambr.com/) — same key works for every MCP client below.
+2. Browse [Integrations](/integrations/n8n) and pick the client closest to where your users already are: n8n if you live in workflow tools, Claude Desktop or [Open WebUI](/integrations/open-webui) if you want a chat UI, [Custom](/integrations/custom) if you're writing your own.
+3. If you're building a custom client from scratch, read [Platform → CU endpoint](/platform/cu-endpoint) and the [MCP API reference](/api-reference/introduction) before you start.
 
-The course had a deliberate structure. To make it explicit one more time:
-
-| Stage | What you're doing | Cost per task | Repeatability |
-|-------|-------------------|---------------|---------------|
-| **Crawl** | Writing one-off prompts in the chat | High (tokens, time, attention) | Low (you copy-paste) |
-| **Walk** | Using sub-agents and the live browser for richer tasks | Same as crawl | Same as crawl |
-| **Run** | Calling skills you've built, by name | Low (just parameters) | High (deterministic) |
-| **Automate** | Skills triggered by events, schedules, webhooks | Approaching zero | Total |
-
-Each row is a step in leverage. The first three are inside the platform; the fourth is what happens when you connect the platform to the rest of your stack.
-
-## What you should do next
-
-If you've followed along and want to actually try this:
-
-1. **Read the [Skills overview](/skills/overview)** to understand the on-disk format.
-2. **Pick a recurring task** you do in the chat. Three repetitions is plenty of signal.
-3. **Run `/skill-creator`** the way scenario 8 did. You don't need to write the SKILL.md by hand.
-4. **Test the new skill in the chat** for a week. Refine the input contract until it feels obvious.
-5. **Wire it into [n8n](/integrations/n8n)** — or whatever your team already uses for automations.
-
-That's the loop. Skills are just prompts that grew up.
+The rest is the same loop you already know — pick a recurring task, build a skill for it in the chat, then change which client triggers the session. The skill stays put.
 
 [Back to the course overview →](/demo-course/overview)
