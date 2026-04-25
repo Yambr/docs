@@ -1,6 +1,6 @@
 ---
 title: "9. What's next"
-description: "Computer Use is an MCP server. The same endpoint your chat uses can be reached from n8n, a Telegram bot, or any in-house tool — skills travel with it."
+description: "Computer Use is an MCP server. Anything that speaks MCP can use it — n8n, Claude Desktop, a Telegram bot, your in-house tool. Skills come along for the ride."
 ---
 
 The eight scenarios were a self-contained tour: crawl with one-off prompts, walk with the live browser and sub-agents, then run by packaging a recurring task into a skill. Scenario 8 ended on the moment the skill exists. This page is about what happens after that.
@@ -9,23 +9,26 @@ The eight scenarios were a self-contained tour: crawl with one-off prompts, walk
 
 Once a skill is built, the next question isn't "how do I deploy this skill." Skills aren't deployed as standalone services and they aren't HTTP endpoints. They live inside the Computer Use sandbox alongside the browser, terminal, file system, and sub-agents, and the model picks them up during a tool-call session.
 
-The right question is: **where else can I trigger a Computer Use session that has this skill available?** That's an MCP question.
+The right question is: **where else can I open a Computer Use session that has this skill available?** That's an MCP question.
 
 ## Computer Use is an MCP server
 
-`api.yambr.com` — and any [self-hosted](/install/quickstart) Open Computer Use instance — exposes the Computer Use tool over the [Model Context Protocol](/api-reference/introduction). Any MCP-capable client can connect to it and get the full sandbox: browser, shell, files, sub-agents, and every skill installed on that instance. The chat at `chat.yambr.com` is one such client. It isn't special — it's just Open WebUI pointed at the same [`/mcp` endpoint](/platform/cu-endpoint) you can point anything else at.
+`api.yambr.com` — and any [self-hosted](/install/quickstart) Open Computer Use instance — exposes the Computer Use tool over the [Model Context Protocol](/api-reference/introduction). Anything that speaks MCP connects to the same [`/mcp` endpoint](/platform/cu-endpoint) and gets the full sandbox: browser, shell, files, sub-agents, and every skill installed on that instance.
 
-Three concrete shapes that take.
+The chat at `chat.yambr.com` is just one MCP client among many. It isn't special — it's Open WebUI pointed at `/mcp`. Anything else you point at the same URL gets the same engine.
 
-**A messenger bot.** A small Python or Node service wraps an LLM, lists the Yambr MCP endpoint as one of its tool sources, and forwards user messages from Telegram or Slack into the agent loop. The user types in a chat they already use every day; the agent runs in the Yambr sandbox and replies with whatever artifact the skill produced — a deck, a spreadsheet, a PDF link. From the user's side it feels like a smart bot. From the platform's side it's the same Computer Use session you saw in the demo course.
+A few client shapes worth picturing:
 
-**An n8n workflow.** n8n's MCP client node connects to `api.yambr.com/mcp`, the LLM step decides which Computer Use action to invoke, and the rest of the workflow handles the input event (a webhook, a schedule, a row in a database) and the output (an email, a file in object storage, a downstream API call). The skill the model uses on the Yambr side is whatever's installed on the sandbox — no per-workflow wiring. See [Integrations → n8n](/integrations/n8n) for the connection details.
+- **A workflow tool.** [n8n](/integrations/n8n) has a built-in MCP client node. Add the Yambr endpoint, point a webhook or schedule at it, and the workflow can run a Computer Use session as a step.
+- **A messenger.** A Telegram or Slack bot configured as an MCP client — no custom backend, just an MCP-aware bot framework — forwards user messages into a Yambr session and posts the artifact back.
+- **A desktop chat.** [Claude Desktop](/integrations/claude-desktop) lets you add MCP servers in settings; once you add `api.yambr.com/mcp`, every conversation has access to the same sandbox the demo course used.
+- **An in-house tool.** A panel inside your CRM, a CLI for the ops team, an internal app — anything that wires up an MCP client gets the same surface. [Integrations → Custom](/integrations/custom) walks through the protocol-level wiring; [LiteLLM](/integrations/litellm) is the gateway layer if you want unified billing.
 
-**A custom in-house tool.** Same MCP endpoint, but the client is something the team built themselves: a side panel inside their CRM, a CLI for the ops team, an internal Slack bot that only their company can see. The auth, the UX, and the trigger surface are all decided in-house; the engine is the shared Computer Use server. [Integrations → Custom](/integrations/custom) walks through the protocol-level wiring, and [LiteLLM](/integrations/litellm) covers the gateway layer if the client needs unified billing across providers.
+The list isn't exhaustive on purpose. The point is that **the answer is always "add an MCP client."** No bespoke integration, no per-product API.
 
 ## Skills travel with the instance
 
-The leverage of this model comes from where skills live. A skill is a folder inside the Computer Use sandbox; every session on that instance can see it. If the team adds an `invoice-builder` skill to a self-hosted instance, every MCP client that talks to that instance — the chat, the n8n workflow, the Telegram bot, the CRM side panel — gets it for free, without a redeploy on the client side. The user-facing surface changes. The engine doesn't.
+The leverage of this model comes from where skills live. A skill is a folder inside the Computer Use sandbox; every session on that instance can see it. If the team adds an `invoice-builder` skill to a self-hosted instance, every MCP client that talks to that instance — the chat, the n8n workflow, the Telegram bot, the CRM panel — gets it for free, without a redeploy on the client side. The user-facing surface changes. The engine doesn't.
 
 That's also why the [skills overview](/skills/overview), [creating skills](/skills/creating), and [dynamic skills](/skills/dynamic) pages are worth a second read once you start thinking about multiple clients. The skill you write once is the skill every client invokes.
 
@@ -33,10 +36,10 @@ That's also why the [skills overview](/skills/overview), [creating skills](/skil
 
 If you want to try this:
 
-1. Get an API key from [app.yambr.com](https://app.yambr.com/) — same key works for every MCP client below.
-2. Browse [Integrations](/integrations/n8n) and pick the client closest to where your users already are: n8n if you live in workflow tools, Claude Desktop or [Open WebUI](/integrations/open-webui) if you want a chat UI, [Custom](/integrations/custom) if you're writing your own.
-3. If you're building a custom client from scratch, read [Platform → CU endpoint](/platform/cu-endpoint) and the [MCP API reference](/api-reference/introduction) before you start.
+1. Get an API key from [app.yambr.com](https://app.yambr.com/) — same key works for every MCP client.
+2. Browse [Integrations](/integrations/n8n) and pick the client closest to where your users already are.
+3. If you're writing your own client, read [Platform → CU endpoint](/platform/cu-endpoint) and the [MCP API reference](/api-reference/introduction) first.
 
-The rest is the same loop you already know — pick a recurring task, build a skill for it in the chat, then change which client triggers the session. The skill stays put.
+The rest is the same loop you already know — pick a recurring task, build a skill for it in the chat, then change which MCP client opens the session. The skill stays put.
 
 [Back to the course overview →](/demo-course/overview)
